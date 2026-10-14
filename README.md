@@ -2,8 +2,8 @@
 
 e-hentai 画廊下载器 —— **纯命令行**（CLI），支持**标签搜索**、**先看名单再挑着下**。
 
-拆自 [felinepaw](../felinepaw) 家族的 `sites/e-hentai/`，独立成一个自包含的目录。
-`common.py` 是那份公共库的**拷贝**（不是 import），所以两边改动要手动同步。
+> 本项目属于 [felinepaw](https://github.com/SparkSlugcat/felinepaw) 家族 —— 一个覆盖
+> e621 / e-hentai / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us 的多站点图片爬虫框架。
 
 ---
 
@@ -23,21 +23,21 @@ e-hentai 上搜一个标签可能出来几万个画廊，一次全下既没必�
 
 | 项 | 说明 |
 |---|---|
-| Python | 3.9+（本机固定用 `%USERPROFILE%\miniconda3\envs\py39`） |
+| Python | 3.9+ |
 | 第三方库 | `requests`、`lxml` |
 | 网络 | **必须走代理**。e-hentai 境内直连不通，脚本默认会自动探本地 Clash 端口（7897 / 7890 / 7891） |
 
 装依赖：
 
 ```
-%USERPROFILE%\miniconda3\envs\py39\python.exe -m pip install requests lxml
+python -m pip install requests lxml
 ```
 
 ---
 
 ## 两种用法
 
-### A. 双击 `启动.bat`（菜单式，不用背参数）
+### A. 双击 `e-hentai启动.bat`（菜单式，不用背参数）
 
 双击后会开一个命令行窗口，菜单就在里面：
 
@@ -59,9 +59,9 @@ e-hentai 上搜一个标签可能出来几万个画廊，一次全下既没必�
 也支持带参数直达，方便做桌面快捷方式：
 
 ```
-启动.bat check    只跑网络预检
-启动.bat search   直接进标签搜索
-启动.bat shell    直接进命令行模式
+e-hentai启动.bat check    只跑网络预检
+e-hentai启动.bat search   直接进标签搜索
+e-hentai启动.bat shell    直接进命令行模式
 ```
 
 ### B. 命令行
@@ -71,7 +71,7 @@ e-hentai 上搜一个标签可能出来几万个画廊，一次全下既没必�
 python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
 
 # ② 标签搜索 + 只看名单（不下载）
-python EH_scraper_v2.py --tags "language:chinese$ female:anal" --limit 30 --dry-run
+python EH_scraper_v2.py --tags "language:chinese$ female:feline" --limit 30 --dry-run
 
 # ③ 搜完直接挑着下
 python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --pick 2-4,7
@@ -110,11 +110,22 @@ python check.py
 | 写法 | 含义 |
 |---|---|
 | `language:chinese$` | 精确匹配（`$` = 完全匹配这个标签，不是包含） |
-| `female:anal` | 普通标签 |
-| `-male:anal` | **排除**这个标签 |
-| `~anal` | 模糊匹配 |
+| `female:feline` | 普通标签 |
+| `-male:feline` | **排除**这个标签 |
+| `~feline` | 模糊匹配 |
 
 多个标签用空格分隔，整串用引号包住。
+
+### `--pick` 序号写法
+
+用**英文逗号**分隔多段，每段可以是一个数或一个范围：
+
+| 写法 | 含义 |
+|---|---|
+| `2-4,7` | 第 2、3、4、7 个 |
+| `3-` | 从第 3 个到最后一个 |
+| `-3` | 从第 1 个到第 3 个 |
+| `all` | 全部 |
 
 ---
 
@@ -122,59 +133,216 @@ python check.py
 
 ```
 e-hentai-paw/
-├── EH_scraper_v2.py     主脚本（搜索 / 单画廊 双模式）
-├── common.py            共享库（从 felinepaw 拷贝，改动要同步）
-├── check.py             网络预检，单独跑一次链路体检
-├── 启动.bat             双击启动器（菜单式，GBK 编码）
-├── README.md            本文件
-├── PROJECT_STATUS.md    项目规格与交接文档（含 tkinter 学习计划）
-├── .gitignore
-├── eh_manifest.json     运行产物：名单（dry-run 生成）
-└── eh_<标签>/           运行产物：下载的图
+├── EH_scraper_v2.py      主脚本（搜索 / 单画廊 双模式）
+├── common.py             共享库
+├── check.py              网络预检，单独跑一次链路体检
+├── e-hentai启动.bat      双击启动器（菜单式，GBK 编码）
+├── README.md
+└── .gitignore
 ```
+
+运行产物（不随仓库发布）：
+
+- `eh_manifest.json` —— 名单文件，`--dry-run` 生成
+- `eh_<标签>/` —— 下载的图
 
 输出目录规则：
 
 - 搜索模式 → `eh_<标签>/`（标签里的 `$ ~` 会被剔掉，空格变下划线）
 - 每个画廊一个子目录：`<名单序号>_<画廊标题>/`
-- 图名 = **名单里的原始序号**（不是重新编号）。这条很重要：否则 `--pick 2-4`
-  和 `--pick 5-6` 会写出同名文件，被断点续传当成"已下载"跳过，**静默漏图**。
+- 图名沿用名单里的**原始序号**，方便和 `--pick` 对应、也方便断点续传
 
 ---
 
-## 已知问题与设计决定
+## ⚠️ 免责声明
 
-### 搜索结果翻页是**游标式**，不是 `page=N`
-
-e-hentai 的搜索结果页用 `&next=<gid>` 翻页（gid = 本页最后一个画廊的 id）。
-
-实测 `page=0` / `page=1` / `page=2` / `page=50` 返回的是**完全相同**的一批数据 ——
-**静默重复，不报错**。所以如果哪天翻页看起来"卡在第一页"，先怀疑这里。
-
-本脚本已用游标实现，从页面底部的 `<a id="unext">` 或 `var nexturl=` 取下一个游标。
-
-### `--pages` 会提前停止翻页
-
-画廊详情页每页 20 个链接。要下的张数够了就不再翻页 —— 一个 207 页的画廊
-下了前 3 张就停，从 11 个请求降到 1 个。
-
-### 代理为什么"不问系统、直接探本地端口"
-
-`--proxy` 留空时，脚本**不读系统代理设置**，而是直接探 7897 / 7890 / 7891。
-原因：本机的**环境变量**里可能存着另一个代理端口（能连上、但出不了网），
-系统级 auto 检测会优先拿到它，于是只能在真实请求时才失败 —— 等于白跑一次。
-
-显式写 `--proxy off` / `--proxy auto` / `--proxy <URL>` 时一律尊重你的输入。
+- 本工具**仅供个人欣赏、翻译与学习**使用。**禁止任何商业用途或非法盈利**，使用后果由使用者自负。
+- e-hentai 是成人向站点，脚本默认就会下载成人内容，请自行判断是否适合使用。
+- 请遵守站点自身的 API / 自动化使用条款，**控制请求频率**，避免给站点造成压力。
+- 使用风险自负。作者不对下载到的内容、也不对账号安全承担任何责任。
 
 ---
 
-## 与 felinepaw 的关系
+## 🔗 相关项目
 
-| | |
+### 🐾 [felinepaw](https://github.com/SparkSlugcat/felinepaw) — 多站点图片爬虫框架
+
+本项目的上游家族。同一套引擎设计，另有 e621 / FurAffinity / BBooru / WildDream / HypnoHub /
+Rule34.us 等站点的下载脚本，以及统一的命令行入口与图形界面。
+
+[![Stars](https://img.shields.io/github/stars/SparkSlugcat/felinepaw?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/felinepaw/stargazers)
+
+- **只想要图形界面**：e621 用户请看 [e621-downloader](https://github.com/SparkSlugcat/e621-downloader)，免装 Python 的 exe，双击即用
+- **想要一个入口调所有站点**：用 felinepaw 的 `felinepaw_tool.py`，本仓库的行为与它保持一致
+
+> 💡 一句话：**只下 e-hentai** → 用本仓库；**同时要下别的站** → 看 [felinepaw](https://github.com/SparkSlugcat/felinepaw)。
+
+---
+---
+
+# e-hentai-paw (English)
+
+A **command-line** downloader for e-hentai galleries, with **tag search** and a
+**browse-the-list-first-then-pick** workflow.
+
+> Part of the **[felinepaw](https://github.com/SparkSlugcat/felinepaw)** family — a multi-site image
+> scraper framework covering e621 / e-hentai / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us.
+
+## What it solves
+
+A single tag search on e-hentai can return tens of thousands of galleries. Downloading all of them is
+rarely useful and easy to get rate-limited for. So the workflow is **two steps**:
+
+1. Search and **list only** (`--dry-run`) — not a single byte is downloaded
+2. **Pick indices** from that list (`--pick 2-4,7`)
+
+In one line: **the index shown in the dry-run output is the index you pass to `--pick`.**
+
+## Requirements
+
+| Item | Notes |
 |---|---|
-| 源头 | `../felinepaw/sites/e-hentai/EH_scraper_v2.py` |
-| 本目录 | 同一套代码的发布副本（独立目录，可整体拷走） |
-| 同步 | 改任意一边后，把 `EH_scraper_v2.py` 和 `common.py` 拷到另一边 |
-| 家族入口 | felinepaw 的 `felinepaw_tool.py ehentai ...` 也能调（走源头那份） |
+| Python | 3.9+ |
+| Third-party | `requests`, `lxml` |
+| Network | **A proxy is required.** e-hentai is not directly reachable from mainland China; the script probes the local Clash ports (7897 / 7890 / 7891) by default |
 
-**没有图形界面。** 想给它加一层 tkinter 窗口，看 `PROJECT_STATUS.md` 的学习计划。
+```
+python -m pip install requests lxml
+```
+
+## Two ways to run
+
+### A. Double-click `e-hentai启动.bat` (menu-driven, no flags to memorize)
+
+A console window opens with the menu inside:
+
+```
+    [1]  Tag search ........ list only, no download (dry-run)
+    [2]  Pick & download ... download by index from the list (2-4,7)
+    [3]  Single gallery .... paste a gallery URL
+
+    [4]  Network check ..... is Clash / the node ready?
+    [5]  Open download folder
+    [6]  Open documentation  README.md
+    [7]  Command-line mode .. Python is already set up
+
+    [0]  Exit
+```
+
+**This is a CLI tool with no GUI**, so double-clicking always opens a console window — that window
+*is* the program, don't close it.
+
+Arguments are also accepted for direct entry, handy for desktop shortcuts:
+
+```
+e-hentai启动.bat check    network pre-check only
+e-hentai启动.bat search   go straight to tag search
+e-hentai启动.bat shell    go straight to command-line mode
+```
+
+### B. Command line
+
+```bash
+# (1) Single gallery (paste a URL)
+python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
+
+# (2) Tag search, listing only (no download)
+python EH_scraper_v2.py --tags "language:chinese$ female:feline" --limit 30 --dry-run
+
+# (3) Search and download selected entries right away
+python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --pick 2-4,7
+
+# (4) Reproduce exactly: pick from a saved list, no search request
+python EH_scraper_v2.py --from-manifest eh_manifest.json --pick 2-4,7
+
+# Just check whether the proxy works
+python check.py
+```
+
+## Options
+
+| Option | Description |
+|---|---|
+| `url` | Gallery URL; mutually exclusive with `--tags` |
+| `-t, --tags` | Tag search expression (see below) |
+| `--limit` | Search mode: take the first N **galleries** (default 30, `inf` = all, hard cap 1000)<br>Single-gallery mode: download the first N **images** (default 120) |
+| `--pick` | Pick by list index: `2-4,7` / `3-` / `-3` / `all` |
+| `--pages` | Search mode only: at most N images per gallery (default all) |
+| `--dry-run` | Fetch the list only; write it to the file given by `--manifest` |
+| `--manifest` | Manifest filename (default `eh_manifest.json`) |
+| `--from-manifest` | Read results from this manifest file, **skipping the search request** |
+| `-o, --output` | Output directory |
+| `-w, --workers` | Concurrent threads (default 4, max 16) |
+| `-d, --delay` | Max random delay before each request, in seconds (default 1.0 — rate limits are tight, don't go lower) |
+| `--cooldown` | Seconds all threads stay quiet after a 429/503 (default 20) |
+| `--force` | Re-download images that already exist (default: skip) |
+| `--proxy` | Empty = auto-probe local Clash port; `off` = direct; or `http://127.0.0.1:7897` |
+| `--no-preflight` | Skip the proxy pre-check before requests |
+
+### Tag syntax
+
+| Form | Meaning |
+|---|---|
+| `language:chinese$` | Exact match (`$` = match the tag exactly, not as a substring) |
+| `female:feline` | Plain tag |
+| `-male:feline` | **Exclude** this tag |
+| `~feline` | Fuzzy match |
+
+Separate multiple tags with spaces and quote the whole string.
+
+### `--pick` index forms
+
+Separate segments with **English commas**; each segment is a number or a range:
+
+| Form | Meaning |
+|---|---|
+| `2-4,7` | The 2nd, 3rd, 4th and 7th entries |
+| `3-` | From the 3rd entry to the last |
+| `-3` | From the 1st entry to the 3rd |
+| `all` | Everything |
+
+## Layout
+
+```
+e-hentai-paw/
+├── EH_scraper_v2.py      main script (search / single-gallery, dual mode)
+├── common.py             shared library
+├── check.py              network pre-check; run once to test the whole chain
+├── e-hentai启动.bat      double-click launcher (menu-driven, GBK encoded)
+├── README.md
+└── .gitignore
+```
+
+Runtime artifacts (not shipped with the repository):
+
+- `eh_manifest.json` — the list file, produced by `--dry-run`
+- `eh_<tags>/` — the downloaded images
+
+Output directory rules:
+
+- Search mode → `eh_<tags>/` (the `$ ~` symbols are stripped, spaces become underscores)
+- One subdirectory per gallery: `<list index>_<gallery title>/`
+- Image names keep their **original list index**, which lines up with `--pick` and with resume
+
+## ⚠️ Disclaimers
+
+- This tool is intended **only for personal appreciation, translation and learning**.
+  **Commercial use or illegal profit-making is strictly prohibited.** You bear all responsibility.
+- e-hentai is an adult-oriented site, and the script downloads adult content by default — use your own judgment.
+- Please comply with the site's own API / automation guidelines and **keep request rates low** so you
+  don't put pressure on the site.
+- Use at your own risk. The author is not liable for downloaded content or account safety.
+
+## 🔗 Related
+
+### 🐾 [felinepaw](https://github.com/SparkSlugcat/felinepaw) — a multi-site image scraper framework
+
+The upstream family this project belongs to. Built on the same engine design, it also ships downloaders
+for e621 / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us, plus a unified CLI entry point and a GUI.
+
+[![Stars](https://img.shields.io/github/stars/SparkSlugcat/felinepaw?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/felinepaw/stargazers)
+
+- **Just want a GUI**: e621 users should look at [e621-downloader](https://github.com/SparkSlugcat/e621-downloader) — a no-Python-required exe, double-click and go
+- **Want one entry point for every site**: use felinepaw's `felinepaw_tool.py`; this repository behaves identically
+
+> 💡 In one line: **only e-hentai** → use this repository; **other sites too** → see [felinepaw](https://github.com/SparkSlugcat/felinepaw).
