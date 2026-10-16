@@ -124,7 +124,7 @@ echo 正在搜索，请稍候...
 echo.
 "%PY%" "%~dp0EH_scraper_v2.py" --tags "%tags%" --limit %limit% --dry-run
 echo.
-pause
+set /p "dummy=按任意键继续..."
 goto :menu
 
 
@@ -153,7 +153,7 @@ if not "%pages%"=="" set "PAGESARG=--pages %pages%"
 echo.
 "%PY%" "%~dp0EH_scraper_v2.py" --from-manifest "%~dp0eh_manifest.json" --pick "%pick%" %PAGESARG%
 echo.
-pause
+set /p "dummy=按任意键继续..."
 goto :menu
 
 
@@ -173,7 +173,7 @@ if "%glimit%"=="" set "glimit=120"
 echo.
 "%PY%" "%~dp0EH_scraper_v2.py" "%url%" --limit %glimit%
 echo.
-pause
+set /p "dummy=按任意键继续..."
 goto :menu
 
 
@@ -181,7 +181,7 @@ goto :menu
 cls
 "%PY%" "%~dp0check.py"
 echo.
-pause
+set /p "dummy=按任意键继续..."
 goto :menu
 
 
@@ -195,7 +195,7 @@ if not exist "%~dp0README.md" (
     echo.
     echo 没找到 README.md。
     echo.
-    pause
+    set /p "dummy=按任意键继续..."
     goto :menu
 )
 start "" "%~dp0README.md"
@@ -222,7 +222,7 @@ echo.
 echo 还没有名单文件 eh_manifest.json。
 echo 请先回到菜单用 [1] 标签搜索 生成一份，再来挑着下。
 echo.
-pause
+set /p "dummy=按任意键继续..."
 goto :menu
 
 
@@ -232,7 +232,7 @@ echo 缺少依赖库 requests / lxml。装一下（把这行复制到命令行跑）：
 echo.
 echo     "%PY%" -m pip install requests lxml
 echo.
-pause
+set /p "dummy=按任意键继续..."
 exit /b 1
 
 
@@ -244,5 +244,5 @@ echo 两种指定办法（任选其一）：
 echo   1) 在命令行先 set PYTHON_EXE=你的\python.exe 再跑本文件
 echo   2) 建一个名为 py39 的 conda 环境，脚本会自动找到它
 echo.
-pause
+set /p "dummy=按任意键继续..."
 exit /b 1

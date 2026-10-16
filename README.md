@@ -1,6 +1,6 @@
 # e-hentai-paw
 
-e-hentai 画廊下载器 —— **纯命令行**（CLI），支持**标签搜索**、**先看名单再挑着下**。
+e-hentai 画廊下载器 —— 支持**标签搜索**、**先看名单再挑着下**，提供**命令行（CLI）**和**图形界面（GUI）**两种入口。
 
 > 本项目属于 [felinepaw](https://github.com/SparkSlugcat/felinepaw) 家族 —— 一个覆盖
 > e621 / e-hentai / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us 的多站点图片爬虫框架。
@@ -35,7 +35,7 @@ python -m pip install requests lxml
 
 ---
 
-## 两种用法
+## 三种用法
 
 ### A. 双击 `e-hentai启动.bat`（菜单式，不用背参数）
 
@@ -54,7 +54,7 @@ python -m pip install requests lxml
     [0]  退出
 ```
 
-**这是个 CLI 工具，没有图形界面**，所以双击一定会开命令窗口 —— 那就是本体，别关。
+**这是菜单式 CLI 入口**，双击一定会开命令窗口 —— 那就是本体，别关。（想要图形界面见下方 C 项）
 
 也支持带参数直达，方便做桌面快捷方式：
 
@@ -82,6 +82,14 @@ python EH_scraper_v2.py --from-manifest eh_manifest.json --pick 2-4,7
 # 只想确认代理通不通
 python check.py
 ```
+
+### C. 双击 `启动GUI(无窗口).vbs`（图形界面，不用背参数）
+
+双击直接弹图形窗口（不闪命令行黑框）。窗口里选模式（标签搜索 / 单画廊 / 从名单挑），
+填参数点「▶ 开始」，运行日志实时刷在下方。
+
+> 依赖同 A/B（Python 3.9+ 与 `requests`、`lxml`）；窗口本身只用到 Python 自带的 tkinter。
+> 双击后若没出现窗口，改双击 `启动GUI.bat` —— 它会先把报错打到命令行窗口里。
 
 ---
 
@@ -134,9 +142,12 @@ python check.py
 ```
 e-hentai-paw/
 ├── EH_scraper_v2.py      主脚本（搜索 / 单画廊 双模式）
+├── EH_gui.py             图形界面（tkinter 壳，套在主脚本外面）
 ├── common.py             共享库
 ├── check.py              网络预检，单独跑一次链路体检
-├── e-hentai启动.bat      双击启动器（菜单式，GBK 编码）
+├── e-hentai启动.bat      双击启动器（菜单式 CLI，GBK 编码）
+├── 启动GUI.bat           图形界面启动器（探测 Python + 自检 + 起 GUI）
+├── 启动GUI(无窗口).vbs   图形界面无窗口启动器（双击零窗口直开）
 ├── README.md
 └── .gitignore
 ```
@@ -172,18 +183,28 @@ Rule34.us 等站点的下载脚本，以及统一的命令行入口与图形界�
 
 [![Stars](https://img.shields.io/github/stars/SparkSlugcat/felinepaw?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/felinepaw/stargazers)
 
-- **只想要图形界面**：e621 用户请看 [e621-downloader](https://github.com/SparkSlugcat/e621-downloader)，免装 Python 的 exe，双击即用
 - **想要一个入口调所有站点**：用 felinepaw 的 `felinepaw_tool.py`，本仓库的行为与它保持一致
 
-> 💡 一句话：**只下 e-hentai** → 用本仓库；**同时要下别的站** → 看 [felinepaw](https://github.com/SparkSlugcat/felinepaw)。
+### 🖥 [e621-downloader](https://github.com/SparkSlugcat/e621-downloader) — e621 的图形界面版
+
+e621 专用的 tkinter GUI，**免装 Python**，下载一个 exe 双击就能用；艺术家模式同样支持
+「先扫描名单、再勾选下载」的挑着下工作流。
+
+[![Latest release](https://img.shields.io/github/v/release/SparkSlugcat/e621-downloader?label=Download&style=for-the-badge&color=brightgreen)](https://github.com/SparkSlugcat/e621-downloader/releases/latest)
+[![Stars](https://img.shields.io/github/stars/SparkSlugcat/e621-downloader?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/e621-downloader/stargazers)
+
+- **无需 Python** —— 从 Releases 下载 `E621Downloader.exe` 双击即用
+- **标签 / 标签分页 / 艺术家** 等下载模式，中英双语界面，实时日志 + 停止按钮
+
+> 💡 一句话：**只下 e-hentai** → 用本仓库；**只下 e621** → 看 [e621-downloader](https://github.com/SparkSlugcat/e621-downloader)；**要一个入口调所有站** → 看 [felinepaw](https://github.com/SparkSlugcat/felinepaw)。
 
 ---
 ---
 
 # e-hentai-paw (English)
 
-A **command-line** downloader for e-hentai galleries, with **tag search** and a
-**browse-the-list-first-then-pick** workflow.
+A downloader for e-hentai galleries, with **tag search** and a **browse-the-list-first-then-pick**
+workflow. It offers both a **command-line interface (CLI)** and a **graphical interface (GUI)**.
 
 > Part of the **[felinepaw](https://github.com/SparkSlugcat/felinepaw)** family — a multi-site image
 > scraper framework covering e621 / e-hentai / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us.
@@ -210,7 +231,7 @@ In one line: **the index shown in the dry-run output is the index you pass to `-
 python -m pip install requests lxml
 ```
 
-## Two ways to run
+## Three ways to run
 
 ### A. Double-click `e-hentai启动.bat` (menu-driven, no flags to memorize)
 
@@ -229,8 +250,8 @@ A console window opens with the menu inside:
     [0]  Exit
 ```
 
-**This is a CLI tool with no GUI**, so double-clicking always opens a console window — that window
-*is* the program, don't close it.
+**This is the menu-driven CLI entry**, so double-clicking always opens a console window — that window
+*is* the program, don't close it. (For a GUI, see item C below.)
 
 Arguments are also accepted for direct entry, handy for desktop shortcuts:
 
@@ -258,6 +279,15 @@ python EH_scraper_v2.py --from-manifest eh_manifest.json --pick 2-4,7
 # Just check whether the proxy works
 python check.py
 ```
+
+### C. Double-click `启动GUI(无窗口).vbs` (graphical interface, no flags to memorize)
+
+Double-clicking opens a graphical window directly (no console flash). Pick a mode (tag search /
+single gallery / from manifest), fill in the fields and click "▶ 开始"; the run log streams in below.
+
+> Same requirements as A/B (Python 3.9+ with `requests` and `lxml`); the window itself only needs
+> tkinter, which ships with Python. If no window appears, double-click `启动GUI.bat` instead — it
+> prints the error to a console window first.
 
 ## Options
 
@@ -306,9 +336,12 @@ Separate segments with **English commas**; each segment is a number or a range:
 ```
 e-hentai-paw/
 ├── EH_scraper_v2.py      main script (search / single-gallery, dual mode)
+├── EH_gui.py             graphical interface (tkinter shell over the main script)
 ├── common.py             shared library
 ├── check.py              network pre-check; run once to test the whole chain
-├── e-hentai启动.bat      double-click launcher (menu-driven, GBK encoded)
+├── e-hentai启动.bat      double-click launcher (menu-driven CLI, GBK encoded)
+├── 启动GUI.bat           GUI launcher (probes Python + self-check + launches the GUI)
+├── 启动GUI(无窗口).vbs   console-free GUI launcher (double-click, no console flash)
 ├── README.md
 └── .gitignore
 ```
@@ -342,7 +375,17 @@ for e621 / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us, plus a unifi
 
 [![Stars](https://img.shields.io/github/stars/SparkSlugcat/felinepaw?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/felinepaw/stargazers)
 
-- **Just want a GUI**: e621 users should look at [e621-downloader](https://github.com/SparkSlugcat/e621-downloader) — a no-Python-required exe, double-click and go
 - **Want one entry point for every site**: use felinepaw's `felinepaw_tool.py`; this repository behaves identically
 
-> 💡 In one line: **only e-hentai** → use this repository; **other sites too** → see [felinepaw](https://github.com/SparkSlugcat/felinepaw).
+### 🖥 [e621-downloader](https://github.com/SparkSlugcat/e621-downloader) — the GUI edition for e621
+
+A tkinter GUI dedicated to e621, **no Python required** — download one exe and double-click it.
+Artist mode supports the same scan-the-list-then-tick workflow.
+
+[![Latest release](https://img.shields.io/github/v/release/SparkSlugcat/e621-downloader?label=Download&style=for-the-badge&color=brightgreen)](https://github.com/SparkSlugcat/e621-downloader/releases/latest)
+[![Stars](https://img.shields.io/github/stars/SparkSlugcat/e621-downloader?style=for-the-badge&color=yellow)](https://github.com/SparkSlugcat/e621-downloader/stargazers)
+
+- **No Python required** — grab `E621Downloader.exe` from Releases and double-click it
+- **Tag / Tag-page / Artist** download modes, bilingual (中文 / English) UI, live log + Stop button
+
+> 💡 In one line: **only e-hentai** → use this repository; **only e621** → see [e621-downloader](https://github.com/SparkSlugcat/e621-downloader); **one entry point for every site** → see [felinepaw](https://github.com/SparkSlugcat/felinepaw).
