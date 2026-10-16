@@ -369,10 +369,20 @@ def selftest():
     return 0
 
 
+def _apply_icon(root):
+    ico = HERE / "assets" / "icon.ico"
+    if ico.exists():
+        try:
+            root.iconbitmap(str(ico))
+        except Exception:
+            pass
+
+
 def main():
     if "--selftest" in sys.argv:
         return selftest()
     root = tk.Tk()
+    _apply_icon(root)
     EHGUI(root)
     root.mainloop()
 
