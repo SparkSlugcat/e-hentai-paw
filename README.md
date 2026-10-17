@@ -2,15 +2,15 @@
 
 e-hentai 画廊下载器 —— 支持**标签搜索**、**先看名单再挑着下**，提供**命令行（CLI）**和**图形界面（GUI）**两种入口。
 
-> 本项目属于 [felinepaw](https://github.com/SparkSlugcat/felinepaw) 家族 —— 一个覆盖
-> e621 / e-hentai / FurAffinity / BBooru / WildDream / HypnoHub / Rule34.us 的多站点图片爬虫框架。
-
 ---
 
 ## 它解决什么问题
 
-e-hentai 上搜一个标签可能出来几万个画廊，一次全下既没必要也容易撞风控。
-所以这里的流程是**两步**：
+**第一诉求：按标签或画廊 URL 批量下载画廊做收藏。**
+e-hentai 上一个标签可能搜出几万个画廊；本工具把整批画廊（或单画廊的多张图）按序号拉下来、落到本地文件夹，是最常见的用途。
+
+**第二诉求：先看名单再挑着下。**
+一次全下既没必要也容易撞风控，所以这里的流程是**两步**：
 
 1. 先搜，**只看名单**（`--dry-run`），一个字节都不下
 2. 从名单里**挑序号**下（`--pick 2-4,7`）
@@ -19,13 +19,150 @@ e-hentai 上搜一个标签可能出来几万个画廊，一次全下既没必�
 
 ---
 
-## 依赖
+## 环境要求
 
 | 项 | 说明 |
 |---|---|
-| Python | 3.9+ |
+| Python | **3.9 或更新版本**（3.9 / 3.10 / 3.11 / 3.12 都测过）。版本管理推荐 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) / [pyenv](https://github.com/pyenv/pyenv)，直接装官方安装包也行 |
+| 操作系统 | **Windows 10 / 11**（本仓库的 `.bat` 启动器只在 Windows 下有意义）；其他系统理论上可跑（不依赖任何 Windows-only 代码），但未测 |
+| 网络 | **必须能访问本地代理**（脚本会自动探本地 Clash 端口 7897 / 7890 / 7891），下文有专节 |
+
+最省事的起步：
+
+```bash
+# 装 Miniconda（如已装跳过）
+# 然后建一个 Python 3.9 环境
+conda create -n eh-paw python=3.9 -y
+conda activate eh-paw
+python -m pip install requests lxml
+```
+
+---
+
+## 🌐 代理端口自定义
+
+> 这一节是**给改了 Clash 端口的用户**的，**90% 的情况你不用看**。
+
+本工具默认连 `http://127.0.0.1:7897`（脚本会自动探本地 Clash 端口 7897 / 7890 / 7891）。
+如果你改了 Clash 的端口（或用 SS / V2RayN / NekoBox / 其他本地代理），改下面这个值：
+
+**方法 1：环境变量（推荐，全局生效）**
+
+```bat
+:: Windows cmd（永久，重开 cmd 生效）
+setx HTTP_PROXY "http://127.0.0.1:你的端口"
+setx HTTPS_PROXY "http://127.0.0.1:你的端口"
+```
+
+**方法 2：命令行参数（单次生效）**
+
+```bash
+python EH_scraper_v2.py --proxy http://127.0.0.1:你的端口
+```
+
+**方法 3：不走代理（如果你直连就通）**
+
+```bash
+python EH_scraper_v2.py --proxy off
+```
+
+## 🆘 启动失败 / 没装好 Python？
+
+如果你**双击 `启动.bat` / `启动GUI.bat` 看到一堆中文报错**，最常见的就是 Python 环境没配好。两步走。
+
+### Step 1：看报错最关键的一行
+
+| 报错样例 | 含义 | 修法 |
+|---|---|---|
+| `'python' 不是内部或外部命令` | 系统找不到 `python.exe` | 走 §Step 2，配 `PYTHON_EXE` |
+| `ModuleNotFoundError: No module named 'requests'` | Python 找到了，但依赖没装 | `pip install requests lxml` |
+| `ModuleNotFoundError: No module named 'lxml'` | lxml 没装 | `pip install lxml` |
+| `DLL load failed while importing _tkinter` | conda 环境缺 tkinter | `conda install -n 你的环境 tk` |
+| 命令行窗口一闪就没了 | self-check 失败后静默退出 | 在 cmd 里手动敲 `启动.bat`，错误会留在窗口里（pause） |
+
+### 如果是 `No module named ...`：依赖没装
+
+完整报错一般长这样，**只看最后一行**就够：
+
+```text
+Traceback (most recent call last):
+  File "D:\你的路径\e-hentai-paw\EH_scraper_v2.py", line 52, in <module>
+    from lxml import etree
+ModuleNotFoundError: No module named 'lxml'
+```
+
+本工具只需要两个库，一条命令装齐：
+
+```bat
+python -m pip install requests lxml
+```
+
+| 容易踩的坑 | 现象 | 怎么办 |
+|---|---|---|
+| 用 `pip install` 而不是 `python -m pip install` | 装完再跑，还是同一个 `No module named` | 电脑上有多个 Python 时，`pip` 可能装到别的上面。**一律用 `python -m pip`** |
+| 装到了另一个 Python 上 | `python -c "import sys; print(sys.executable)"` 打印的路径，跟报错里 `File "...\EH_scraper_v2.py"` 不是同一个环境 | 用那个环境自己的解释器执行 `-m pip install` |
+| 下载卡住、最后报 `ReadTimeoutError` | pip 一直转圈然后超时 | 换国内镜像：`python -m pip install requests lxml -i https://pypi.tuna.tsinghua.edu.cn/simple` |
+| `ImportError: DLL load failed while importing etree` | Python 找到了，但 lxml 的二进制跟它的版本/位数不匹配 | `python -m pip install --force-reinstall lxml`；还不行就 `conda install -n 你的环境 lxml` |
+| `'pip' 不是内部或外部命令` | cmd 里根本找不到 pip | 用 `python -m pip`，绕开 PATH |
+
+**装完验证**（打印 `ok` 才算装对）：
+
+```bat
+python -c "import requests, lxml; print('ok')"
+```
+
+> 💡 **GUI 窗口能正常打开，但一点「▶ 开始」日志框里就冒出 traceback** —— 这就是缺依赖的典型样子
+> （GUI 启动时只需要 `tkinter`，真正干活的是它拉起来的子进程）。按上面把两个库装上即可。
+>
+> 💡 **菜单式 `e-hentai启动.bat` 走的是命令行**，所以缺依赖会在 cmd 窗口里直接打 traceback，
+> 不会一闪而过（脚本带 `pause`）。
+
+### Step 2：让脚本知道你的 Python 在哪
+
+如果你**已经有了**一个 Python / conda 环境（环境名不叫 py39 也行，`myenv` / `ai` / `work` 任意都行），
+**不需要改名**——把它的 `python.exe` 完整路径告诉脚本就行。
+
+**永久**（推荐，写到注册表，全局生效）—— 打开任意 cmd，复制粘贴下面这一行（把路径换成你自己的）：
+
+```bat
+:: 1. 先找你的 python.exe 在哪
+where python
+:: 输出类似: C:\Users\你的用户名\miniconda3\envs\myenv\python.exe
+
+:: 2. 把上面那行复制，改造成下面这条，粘到 cmd 里执行
+setx PYTHON_EXE "C:\Users\你的用户名\miniconda3\envs\myenv\python.exe"
+```
+
+`setx` 写注册表，**执行后必须重新打开一个 cmd 才生效**。然后再双击 `启动.bat` 即可。
+
+**临时**（仅当前 cmd）：
+
+```bat
+set PYTHON_EXE=C:\Users\你的用户名\miniconda3\envs\myenv\python.exe
+启动.bat
+```
+
+### 实在找不到 Python 在哪？
+
+打开任意 cmd，敲：
+
+```bat
+where python
+```
+
+输出的**第一行**就是 `python.exe` 的完整路径。把它配到 `PYTHON_EXE` 即可。
+如果 `where python` 一行都没输出，说明你**根本没装 Python**——装一个就行：
+- 官方：https://www.python.org/downloads/（**勾** "Add Python to PATH"）
+- 或 Miniconda：https://docs.conda.io/en/latest/miniconda.html
+
+---
+
+## 运行依赖
+
+| 项 | 说明 |
+|---|---|
 | 第三方库 | `requests`、`lxml` |
-| 网络 | **必须走代理**。e-hentai 境内直连不通，脚本默认会自动探本地 Clash 端口（7897 / 7890 / 7891） |
+| 代理 | **必须走代理**。e-hentai 境内直连不通，脚本默认会自动探本地 Clash 端口（7897 / 7890 / 7891） |
 
 装依赖：
 
@@ -83,13 +220,13 @@ python EH_scraper_v2.py --from-manifest eh_manifest.json --pick 2-4,7
 python check.py
 ```
 
-### C. 双击 `启动GUI(无窗口).vbs`（图形界面，不用背参数）
+### C. 双击 `启动GUI.bat`（图形界面，不用背参数）
 
-双击直接弹图形窗口（不闪命令行黑框）。窗口里选模式（标签搜索 / 单画廊 / 从名单挑），
+双击直接弹图形窗口（命令行窗口会闪一下，正常）。窗口里选模式（标签搜索 / 单画廊 / 从名单挑），
 填参数点「▶ 开始」，运行日志实时刷在下方。
 
 > 依赖同 A/B（Python 3.9+ 与 `requests`、`lxml`）；窗口本身只用到 Python 自带的 tkinter。
-> 双击后若没出现窗口，改双击 `启动GUI.bat` —— 它会先把报错打到命令行窗口里。
+> 双击后若没出现窗口，**在 cmd 里手动敲 `启动GUI.bat`** —— 错误会留在窗口里（pause）。
 
 ---
 
@@ -147,7 +284,6 @@ e-hentai-paw/
 ├── check.py              网络预检，单独跑一次链路体检
 ├── e-hentai启动.bat      双击启动器（菜单式 CLI，GBK 编码）
 ├── 启动GUI.bat           图形界面启动器（探测 Python + 自检 + 起 GUI）
-├── 启动GUI(无窗口).vbs   图形界面无窗口启动器（双击零窗口直开）
 ├── README.md
 └── .gitignore
 ```
@@ -231,6 +367,44 @@ In one line: **the index shown in the dry-run output is the index you pass to `-
 python -m pip install requests lxml
 ```
 
+## 🆘 `No module named ...` — install the dependencies
+
+The full traceback usually looks like this; **only the last line matters**:
+
+```text
+Traceback (most recent call last):
+  File "D:\path\to\e-hentai-paw\EH_scraper_v2.py", line 52, in <module>
+    from lxml import etree
+ModuleNotFoundError: No module named 'lxml'
+```
+
+This tool needs exactly two libraries:
+
+```bat
+python -m pip install requests lxml
+```
+
+| Pitfall | Symptom | Fix |
+|---|---|---|
+| Running `pip install` instead of `python -m pip install` | The same `No module named` after "installing" | With several Pythons installed, bare `pip` may install into a different one. **Always use `python -m pip`** |
+| Installed into the wrong interpreter | `python -c "import sys; print(sys.executable)"` prints a path outside the environment shown in the traceback | Run `-m pip install` with that environment's own interpreter |
+| Downloads hang, then `ReadTimeoutError` | pip spins forever and times out | Use a mirror: `python -m pip install requests lxml -i https://pypi.tuna.tsinghua.edu.cn/simple` |
+| `ImportError: DLL load failed while importing etree` | lxml's binary doesn't match your Python version / architecture | `python -m pip install --force-reinstall lxml`, or `conda install -n YOUR_ENV lxml` |
+| `'pip' is not recognized` | pip isn't on PATH | Use `python -m pip` |
+
+Verify (it has to print `ok`):
+
+```bat
+python -c "import requests, lxml; print('ok')"
+```
+
+> 💡 **The GUI opens fine, but a traceback shows up in the log the moment you hit "Start"** — that's the
+> classic missing-dependency symptom (the GUI itself only needs `tkinter`; the real download runs in the
+> child process it spawns).
+>
+> 💡 The menu-driven `e-hentai启动.bat` runs in a real console, so missing deps print the traceback right
+> there instead of vanishing (the script has `pause` on failure).
+
 ## Three ways to run
 
 ### A. Double-click `e-hentai启动.bat` (menu-driven, no flags to memorize)
@@ -280,9 +454,9 @@ python EH_scraper_v2.py --from-manifest eh_manifest.json --pick 2-4,7
 python check.py
 ```
 
-### C. Double-click `启动GUI(无窗口).vbs` (graphical interface, no flags to memorize)
+### C. Double-click `启动GUI.bat` (graphical interface, no flags to memorize)
 
-Double-clicking opens a graphical window directly (no console flash). Pick a mode (tag search /
+Double-clicking opens a graphical window (a console window flashes briefly — that's normal). Pick a mode (tag search /
 single gallery / from manifest), fill in the fields and click "▶ 开始"; the run log streams in below.
 
 > Same requirements as A/B (Python 3.9+ with `requests` and `lxml`); the window itself only needs
@@ -341,7 +515,6 @@ e-hentai-paw/
 ├── check.py              network pre-check; run once to test the whole chain
 ├── e-hentai启动.bat      double-click launcher (menu-driven CLI, GBK encoded)
 ├── 启动GUI.bat           GUI launcher (probes Python + self-check + launches the GUI)
-├── 启动GUI(无窗口).vbs   console-free GUI launcher (double-click, no console flash)
 ├── README.md
 └── .gitignore
 ```
