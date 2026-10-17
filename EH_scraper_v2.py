@@ -445,7 +445,8 @@ def build_parser() -> argparse.ArgumentParser:
                         "-male:feline / ~feline，空格分隔多个")
 
     p.add_argument("-o", "--output", default=None,
-                   help="保存目录（搜索模式: 根目录; 单画廊: 该画廊目录）")
+                   help="保存目录。留空 = 读项目根 .pawout（无则当前目录）; "
+                        "搜索模式作为根目录，单画廊作为该画廊目录")
     p.add_argument("--limit", default=None,
                    help="搜索模式: 取前 N 个画廊（默认 %d，inf=全部）; "
                         "单画廊模式: 下前 N 张图（默认 120）" % SEARCH_DEFAULT_LIMIT)
@@ -658,7 +659,7 @@ def _download_gallery_manifest(payload, args, session, pacing):
     else:
         picked = list(enumerate(items, 1))
 
-    out = Path(args.output) if args.output else Path(safe_dir(title))
+    out = Path(args.output) if args.output else common.local_out_root() / safe_dir(title)
     out.mkdir(parents=True, exist_ok=True)
     print("输出目录: %s" % out.resolve())
 
@@ -740,7 +741,7 @@ def _run_search(args, session, pacing):
         picked = list(enumerate(items, 1))
 
     # ---------- 5. 逐画廊下载 ----------
-    out_root = Path(args.output) if args.output else Path(query_dir_name(query))
+    out_root = Path(args.output) if args.output else common.local_out_root() / query_dir_name(query)
     print("\n输出根目录: %s" % out_root.resolve())
 
     ok = skip = fail = 0
@@ -835,7 +836,7 @@ def _run_gallery(args, session, pacing):
           % (len(picked), limit, args.workers, args.delay))
 
     # ---------- 5. 输出目录（修 v2 的 safe_name NameError） ----------
-    out = Path(args.output) if args.output else Path(safe_dir(title))
+    out = Path(args.output) if args.output else common.local_out_root() / safe_dir(title)
     out.mkdir(parents=True, exist_ok=True)
 
     # ---------- 6. 下载 ----------

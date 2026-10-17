@@ -35,6 +35,22 @@ if not defined PY if exist "%USERPROFILE%\miniconda3\envs\py39\python.exe" set "
 if not defined PY if exist "%USERPROFILE%\anaconda3\envs\py39\python.exe" set "PY=%USERPROFILE%\anaconda3\envs\py39\python.exe"
 if not defined PY if exist "%LOCALAPPDATA%\miniconda3\envs\py39\python.exe" set "PY=%LOCALAPPDATA%\miniconda3\envs\py39\python.exe"
 if not defined PY if exist "%LOCALAPPDATA%\Continuum\anaconda3\envs\py39\python.exe" set "PY=%LOCALAPPDATA%\Continuum\anaconda3\envs\py39\python.exe"
+if not defined PY if exist "%USERPROFILE%\miniconda3\envs\py310\python.exe" set "PY=%USERPROFILE%\miniconda3\envs\py310\python.exe"
+if not defined PY if exist "%USERPROFILE%\anaconda3\envs\py310\python.exe" set "PY=%USERPROFILE%\anaconda3\envs\py310\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\miniconda3\envs\py310\python.exe" set "PY=%LOCALAPPDATA%\miniconda3\envs\py310\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\Continuum\anaconda3\envs\py310\python.exe" set "PY=%LOCALAPPDATA%\Continuum\anaconda3\envs\py310\python.exe"
+if not defined PY if exist "%USERPROFILE%\miniconda3\envs\py311\python.exe" set "PY=%USERPROFILE%\miniconda3\envs\py311\python.exe"
+if not defined PY if exist "%USERPROFILE%\anaconda3\envs\py311\python.exe" set "PY=%USERPROFILE%\anaconda3\envs\py311\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\miniconda3\envs\py311\python.exe" set "PY=%LOCALAPPDATA%\miniconda3\envs\py311\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\Continuum\anaconda3\envs\py311\python.exe" set "PY=%LOCALAPPDATA%\Continuum\anaconda3\envs\py311\python.exe"
+if not defined PY if exist "%USERPROFILE%\miniconda3\envs\py312\python.exe" set "PY=%USERPROFILE%\miniconda3\envs\py312\python.exe"
+if not defined PY if exist "%USERPROFILE%\anaconda3\envs\py312\python.exe" set "PY=%USERPROFILE%\anaconda3\envs\py312\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\miniconda3\envs\py312\python.exe" set "PY=%LOCALAPPDATA%\miniconda3\envs\py312\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\Continuum\anaconda3\envs\py312\python.exe" set "PY=%LOCALAPPDATA%\Continuum\anaconda3\envs\py312\python.exe"
+if not defined PY if exist "%USERPROFILE%\miniconda3\envs\py313\python.exe" set "PY=%USERPROFILE%\miniconda3\envs\py313\python.exe"
+if not defined PY if exist "%USERPROFILE%\anaconda3\envs\py313\python.exe" set "PY=%USERPROFILE%\anaconda3\envs\py313\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\miniconda3\envs\py313\python.exe" set "PY=%LOCALAPPDATA%\miniconda3\envs\py313\python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\Continuum\anaconda3\envs\py313\python.exe" set "PY=%LOCALAPPDATA%\Continuum\anaconda3\envs\py313\python.exe"
 if not defined PY if defined CONDA_PREFIX if exist "%CONDA_PREFIX%\python.exe" set "PY=%CONDA_PREFIX%\python.exe"
 if not defined PY for /f "delims=" %%I in ('where python 2^>nul') do if not defined PY set "PY=%%I"
 if defined PY for %%I in ("%PY%") do set "PYDIR=%%~dpI"
@@ -241,8 +257,10 @@ echo.
 echo 没有找到可用的 Python 环境（需要 requests / lxml / bs4 等依赖）。
 echo.
 echo 两种指定办法（任选其一）：
-echo   1) 在命令行先 set PYTHON_EXE=你的\python.exe 再跑本文件
-echo   2) 建一个名为 py39 的 conda 环境，脚本会自动找到它
+echo   1) 把任意 python.exe 的完整路径配给 PYTHON_EXE 环境变量（永久）
+echo     命令: setx PYTHON_EXE "C:\你的\python.exe"
+echo     注意: setx 写注册表,新开 cmd 才生效;先用 set 试一次也行
+echo   2) 建一个名为 py39~py313 的 conda 环境（任选其一），脚本会自动找到它
 echo.
 set /p "dummy=按任意键继续..."
 exit /b 1

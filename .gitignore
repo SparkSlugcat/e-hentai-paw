@@ -15,3 +15,6 @@ dist/
 .vscode/
 *.swp
 PROJECT_STATUS.md 
+
+# ---- 本机私有配置（绝不入库）----
+.pawout
