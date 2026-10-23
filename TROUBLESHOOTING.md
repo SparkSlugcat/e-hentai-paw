@@ -133,25 +133,21 @@ where python
 
 ## 5 代理与网络报错
 
-e-hentai 在国内**不挂代理连不上**。脚本默认会探测本地 Clash 的三个端口：7897 / 7890 / 7891。
+**先分清你属于哪种情况**：境外网络基本直连就通，中国大陆不挂代理连不上。
+本工具不绑定任何代理软件。`--proxy` 留空时**先试本机常见端口 `7897` / `7890` / `7891`**
+（Clash 系的出厂端口），都没开才去读 `HTTP_PROXY` / `HTTPS_PROXY` 和系统代理，最后才直连。
 
-| 报错 | 含义 | 怎么办 |
+| 现象 | 原因 | 怎么办 |
 |---|---|---|
-| `proxy_down` | 预检发现那个端口没在监听 | 确认 Clash 开着，或显式给 `--proxy http://127.0.0.1:端口` |
-| `bad_proxy_url` | 代理串不是合法 URL | 要带协议头：`http://127.0.0.1:7897` |
+| `proxy_down` | 预检发现那个端口没在监听 | 确认代理软件开着、端口对得上；或显式给 `--proxy http://127.0.0.1:端口` |
+| `bad_proxy_url` | 代理串不是合法 URL | 要带协议头：`http://127.0.0.1:端口` |
+| `不支持 SOCKS 代理` | 填了 `socks5://` | 改用客户端的 **HTTP / 混合端口**；或 `pip install "requests[socks]"` |
 | 每个请求都 `ProxyError` | 端口能连但代理没在转发 | 换节点；或加 `--no-preflight` 看原始报错 |
-| 全部超时、没有报错 | 一般是节点死了 | 在 Clash 里换节点再试 |
-| 表站正常、里站空白 | 见 §6 | 见 §6 |
+| 全部超时、没有报错 | 一般是节点死了 | 在代理软件里换节点再试 |
+| 直连也失败、且你在境外 | 可能是 DNS 或本地网络限制 | 先 `--proxy off` 确认是不是代理在捣乱 |
 
-跑之前在 cmd 里单测一次链路最省事：
-
-```bash
-python check.py
-```
-
-> 💡 `--no-preflight` 只跳过预检那一次探测，不会改变实际请求怎么走。
-
----
+> 💡 预检会做一次 TCP 探测 + 一次不重试的 GET，约 1 秒。
+> `proxy_down` / `bad_proxy_url` 会中止本次运行，其余情况只警告、不拦你。
 
 ## 6 里站（ExHentai）进不去
 
@@ -287,24 +283,23 @@ nothing, you don't have Python installed:
 
 ## 5 Proxy and network errors
 
-e-hentai is not reachable from mainland China without a proxy. The script probes the usual local Clash
-ports by default: 7897 / 7890 / 7891.
+**Work out which case you're in first.** Outside mainland China the site is directly
+reachable; from mainland China a proxy is required. The tool is not tied to any particular
+proxy client. An empty `--proxy` **first probes the usual local ports `7897` / `7890` /
+`7891`** (the Clash-family defaults), then falls back to `HTTP_PROXY` / `HTTPS_PROXY` and
+the system proxy, and finally to a direct connection.
 
-| Message | Meaning | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| `proxy_down` | the preflight probe found nothing listening on that port | make sure Clash is running, or pass `--proxy http://127.0.0.1:PORT` |
-| `bad_proxy_url` | the proxy string isn't a valid URL | it needs the scheme: `http://127.0.0.1:7897` |
+| `proxy_down` | the preflight probe found nothing listening on that port | make sure the proxy client is running and the port matches, or pass `--proxy http://127.0.0.1:PORT` |
+| `bad_proxy_url` | the proxy string isn't a valid URL | it needs the scheme: `http://127.0.0.1:PORT` |
+| `SOCKS proxy not supported` | you passed `socks5://` | use the client's **HTTP / mixed port**, or `pip install "requests[socks]"` |
 | `ProxyError` on every request | the port answers but nothing is forwarded | switch node, or add `--no-preflight` to see the raw error |
-| Everything times out with no error | usually a dead node | switch nodes in Clash and retry |
-| Public site fine, private site blank | see §6 | see §6 |
+| Everything times out with no error | usually a dead node | switch nodes in the proxy client and retry |
+| Direct connection also fails, and you're outside mainland China | possibly DNS or a local network restriction | run with `--proxy off` to rule the proxy out |
 
-One-shot link check:
-
-```bash
-python check.py
-```
-
-> 💡 `--no-preflight` only skips that single probe; it does not change how requests are actually sent.
+> 💡 The preflight does one TCP probe plus one non-retrying GET — about a second.
+> `proxy_down` / `bad_proxy_url` abort the run; anything else only warns.
 
 ## 6 The private site (ExHentai) won't open
 

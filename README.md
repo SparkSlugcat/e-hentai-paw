@@ -27,7 +27,7 @@ e-hentai 上一个标签可能搜出几万个画廊；本工具把整批画廊�
 |---|---|
 | Python | **3.9 或更新版本**（3.9 / 3.10 / 3.11 / 3.12 都测过）。版本管理推荐 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) / [pyenv](https://github.com/pyenv/pyenv)，直接装官方安装包也行 |
 | 操作系统 | **Windows 10 / 11**（本仓库的 `.bat` 启动器只在 Windows 下有意义）；其他系统理论上可跑（不依赖任何 Windows-only 代码），但未测 |
-| 网络 | **必须能访问本地代理**（脚本会自动探本地 Clash 端口 7897 / 7890 / 7891），下文有专节 |
+| 网络 | **视所在网络而定**：境外通常直连即通，中国大陆需要代理。任何 **HTTP** 代理都行，下文有专节 |
 
 最省事的起步：
 
@@ -41,32 +41,44 @@ python -m pip install requests lxml
 
 ---
 
-## 🌐 代理端口自定义
+## 🌐 代理
 
-> 这一节是**给改了 Clash 端口的用户**的，**90% 的情况你不用看**。
+**先问一句：你到底需不需要代理？**
 
-本工具默认连 `http://127.0.0.1:7897`（脚本会自动探本地 Clash 端口 7897 / 7890 / 7891）。
-如果你改了 Clash 的端口（或用 SS / V2RayN / NekoBox / 其他本地代理），改下面这个值：
+| 你的网络 | 怎么办 |
+|---|---|
+| 境外 | 基本**直连就通**。`--proxy` 留空即可，想明确点就加 `--proxy off` |
+| 中国大陆 | e-hentai 直连不通，**需要代理**。任何 **HTTP** 代理都行 |
 
-**方法 1：环境变量（推荐，全局生效）**
+> **`--proxy` 留空时怎么决定？分两级。**
+> ① 先依次试本机常见混合端口 `7897` / `7890` / `7891` —— 只要有一个在监听就直接用它
+> （这是 Clash / Clash Verge / mihomo 的出厂端口，所以软件开着就什么都不用填）；
+> ② 三个都没开，再读 `HTTP_PROXY` / `HTTPS_PROXY` 和 Windows 系统代理设置；仍然没有就直连。
+>
+> 这么做是有原因的：e-hentai 境内直连必然失败，与其拿一个"能连上但出不了网"的系统代理
+> 白跑一次，不如先把最常见的几个端口试一遍。
+
+**用的不是 Clash 也完全可以。** 只要能提供一个 **HTTP 端口**就行：Clash / mihomo、
+v2rayN、NekoBox、Surge、Proxifier、公司网关都一样。到那个软件的设置里找到端口填进来：
 
 ```bat
-:: Windows cmd（永久，重开 cmd 生效）
+:: 方法 1：环境变量（永久，重开 cmd 生效）
 setx HTTP_PROXY "http://127.0.0.1:你的端口"
 setx HTTPS_PROXY "http://127.0.0.1:你的端口"
 ```
 
-**方法 2：命令行参数（单次生效）**
-
 ```bash
+# 方法 2：命令行参数（单次生效）
 python EH_scraper_v2.py --proxy http://127.0.0.1:你的端口
-```
 
-**方法 3：不走代理（如果你直连就通）**
-
-```bash
+# 方法 3：完全不用代理（境外网络）
 python EH_scraper_v2.py --proxy off
 ```
+
+> ⚠️ **默认不支持 SOCKS。** 填 `socks5://` 会报 `Missing dependencies for SOCKS support`
+> —— `requests` 认 SOCKS 需要额外的包。两个解法：
+> **① 用客户端的「HTTP / 混合端口」（推荐）**；② `pip install "requests[socks]"`，
+> 装完同一个 `socks5://` 地址就能用。
 
 ## 🆘 出问题了？
 
@@ -87,7 +99,7 @@ python EH_scraper_v2.py --proxy off
 | 项 | 说明 |
 |---|---|
 | 第三方库 | `requests`、`lxml` |
-| 代理 | **必须走代理**。e-hentai 境内直连不通，脚本默认会自动探本地 Clash 端口（7897 / 7890 / 7891） |
+| 代理 | 留空 = 先试本机 `7897` / `7890` / `7891`，再跟随系统代理；境外可填 `off` 直连。任何 **HTTP** 代理都行 |
 
 装依赖：
 
@@ -108,7 +120,7 @@ python -m pip install requests lxml
     [2]  挑着下 。。。。。。 从名单里按序号下（2-4,7）
     [3]  单画廊下载 。。。。 粘一个画廊 URL
 
-    [4]  网络预检 。。。。 Clash / 节点是否就绪
+    [4]  网络预检 。。。。 代理 / 节点是否就绪
     [5]  打开下载文件夹
     [6]  打开说明文档 。。。 README.md
     [7]  命令行模式 。。。。 python 已就绪
@@ -211,7 +223,7 @@ dist\EHPaw.exe --run-scraper --help    :: 应打出 usage，而不是弹出窗�
 | `-d, --delay` | 每次请求前的随机延迟上限秒（默认 1.0，风控紧，别调太小） |
 | `--cooldown` | 吃到 429/503 时全体线程一起安静的秒数（默认 20） |
 | `--force` | 重下已存在的图（默认存在就跳过） |
-| `--proxy` | 留空 = 自动探本地 Clash 端口；`off` = 直连；或写 `http://127.0.0.1:7897` |
+| `--proxy` | 留空 = 先试 `7897` / `7890` / `7891`，再跟随系统代理；`off` = 直连；或写 `http://127.0.0.1:端口` |
 | `--no-preflight` | 跳过发包前的代理预检 |
 | `--site` | `e-hentai`（表站，默认）或 `exhentai`（里站，必须带 cookie）。给 URL 时留空会按域名自动判断 |
 | `--cookie` | 直接给 cookie 串：`"ipb_member_id=…; ipb_pass_hash=…; igneous=…"` |
@@ -356,11 +368,53 @@ In one line: **the index shown in the dry-run output is the index you pass to `-
 |---|---|
 | Python | 3.9+ |
 | Third-party | `requests`, `lxml` |
-| Network | **A proxy is required.** e-hentai is not directly reachable from mainland China; the script probes the local Clash ports (7897 / 7890 / 7891) by default |
+| Network | **Depends on where you are.** Directly reachable from most of the world; mainland China needs a proxy. Any **HTTP** proxy works — see "Proxy" below |
 
 ```
 python -m pip install requests lxml
 ```
+
+## 🌐 Proxy
+
+**First question: do you need one at all?**
+
+| Your network | What to do |
+|---|---|
+| Outside mainland China | Nothing — e-hentai is directly reachable. Leave `--proxy` empty, or pass `--proxy off` to be explicit |
+| Mainland China | A proxy is required. **Any HTTP proxy works** |
+
+> **What does an empty `--proxy` do? Two stages.**
+> ① It probes the usual local mixed ports `7897` / `7890` / `7891` in order and uses the
+> first one that is listening — those are the factory defaults for Clash / Clash Verge /
+> mihomo, so with one of those running you don't need to pass anything;
+> ② if none answers, it falls back to `HTTP_PROXY` / `HTTPS_PROXY` and the Windows system
+> proxy, and finally to a direct connection.
+>
+> The reason is practical: a direct connection to e-hentai from mainland China always fails,
+> and a system proxy that connects but can't route would waste an entire run.
+
+**Using a client that isn't Clash?** That's fine — anything that exposes an **HTTP** port
+works: Clash / mihomo, v2rayN, NekoBox, Surge, Proxifier, a corporate gateway. Find that
+port in the client and pass it:
+
+```bat
+:: Option 1: environment variables (persistent, takes effect after reopening cmd)
+setx HTTP_PROXY "http://127.0.0.1:YOUR_PORT"
+setx HTTPS_PROXY "http://127.0.0.1:YOUR_PORT"
+```
+
+```bash
+# Option 2: command-line flag (one-off)
+python EH_scraper_v2.py --proxy http://127.0.0.1:YOUR_PORT
+
+# Option 3: no proxy at all (fine outside mainland China)
+python EH_scraper_v2.py --proxy off
+```
+
+> ⚠️ **SOCKS is not supported by default.** `socks5://` fails with
+> `Missing dependencies for SOCKS support` — `requests` needs an extra package for it.
+> Either point at the client's **HTTP / mixed port** (recommended), or install
+> `pip install "requests[socks]"` and the same `socks5://` address will work.
 
 ## 🆘 Something broke?
 
@@ -388,7 +442,7 @@ A console window opens with the menu inside:
     [2]  Pick & download ... download by index from the list (2-4,7)
     [3]  Single gallery .... paste a gallery URL
 
-    [4]  Network check ..... is Clash / the node ready?
+    [4]  Network check ..... is the proxy / node ready?
     [5]  Open download folder
     [6]  Open documentation  README.md
     [7]  Command-line mode .. Python is already set up
@@ -490,7 +544,7 @@ binaries — the same exe is either your personal setup (`.pawout` present) or a
 | `-d, --delay` | Max random delay before each request, in seconds (default 1.0 — rate limits are tight, don't go lower) |
 | `--cooldown` | Seconds all threads stay quiet after a 429/503 (default 20) |
 | `--force` | Re-download images that already exist (default: skip) |
-| `--proxy` | Empty = auto-probe local Clash port; `off` = direct; or `http://127.0.0.1:7897` |
+| `--proxy` | Empty = try `7897` / `7890` / `7891` first, then the system proxy; `off` = direct; or `http://127.0.0.1:PORT` |
 | `--no-preflight` | Skip the proxy pre-check before requests |
 | `--site` | `e-hentai` (public, default) or `exhentai` (private, cookies required). With a URL, blank means the site is inferred from the host |
 | `--cookie` | Raw cookie string: `"ipb_member_id=…; ipb_pass_hash=…; igneous=…"` |

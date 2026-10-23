@@ -3,14 +3,14 @@
 """e-hentai-paw 网络预检 —— 单独跑一次链路体检，不下载任何东西。
 
 它做的事和 EH_scraper_v2.py 发包前那一次 `Preflight` 完全一样，
-只是独立成一个入口，方便排查"是不是 Clash 没开 / 节点不通"：
+只是独立成一个入口，方便排查"是不是代理没开 / 节点不通"：
 
-    第 1 段  探本地 Clash 端口（7897 / 7890 / 7891）
+    第 1 段  探本机常见代理端口（7897 / 7890 / 7891）
     第 2 段  用探到的代理去访问 https://e-hentai.org，看拿到什么状态码
 
 用法：
 
-    python check.py                 # 自动探测本地 Clash 端口
+    python check.py                 # 先试本机常见端口，再跟随系统代理
     python check.py --proxy off     # 强制直连（境外网络 / TUN 模式）
     python check.py --proxy http://127.0.0.1:7897
 
@@ -31,7 +31,7 @@ from EH_scraper_v2 import SITE, resolve_proxy
 def main():
     ap = argparse.ArgumentParser(description="e-hentai-paw 网络预检（不发包下载）")
     ap.add_argument("--proxy", default=None,
-                    help="留空 = 自动探测本地 Clash 端口；off = 直连；或写完整 URL")
+                    help="留空 = 先试 7897/7890/7891，再跟随系统代理；off = 直连；或写完整 URL")
     args = ap.parse_args()
 
     proxy, note = resolve_proxy(args.proxy)
