@@ -56,13 +56,17 @@ ZH = {
     "gui_delay_label": "延迟:",
     "gui_cooldown_label": "冷却:",
     "gui_proxy_label": "代理(--proxy):",
+    "gui_site_label": "站点:",
+    "gui_cookie_file_label": "Cookie文件(--cookie-file):",
     "gui_dry_run": "只列名单(--dry-run)",
     "gui_force": "重新下载(--force)",
     "gui_no_preflight": "跳过预检(--no-preflight)",
     "gui_hint": "提示：代理/输出目录/数量等留空 = 用脚本默认；标签语法如 "
-                "language:chinese$ / female:feline / -male:feline（空格分隔多个）；"
+                "language:chinese$ / female:cat / -male:cat（空格分隔多个）；"
                 "--limit 搜索模式作用于画廊、单画廊模式作用于图片；"
-                "「挑序号」「每画廊限张」「只列名单」主要用于搜索流程",
+                "「挑序号」「每画廊限张」「只列名单」主要用于搜索流程；"
+                "里站要先把 cookie 存进 .ehcookie（每行一条 k=v）再把站点选成 exhentai，"
+                "Cookie文件留空即自动读它",
     "gui_start": "▶ 开始",
     "gui_stop": "■ 停止",
     "gui_status_idle": "空闲",
@@ -73,6 +77,8 @@ ZH = {
     "gui_lang_switched": "语言已切换为 {lang}",
     "gui_dlg_output_dir": "选择输出目录",
     "gui_dlg_manifest_file": "选择名单文件",
+    "gui_dlg_cookie_file": "选择 cookie 文件",
+    "gui_filetype_cookie": "Cookie 文件 (*.txt;*.ehcookie)",
     "gui_filetype_all": "所有文件",
     "gui_err_need_tags": "标签搜索模式需要填写标签(--tags)",
     "gui_err_need_url": "单画廊模式需要填写画廊 URL",
@@ -86,6 +92,8 @@ ZH = {
     "gui_stop_requested": "已请求停止",
     "gui_selftest_search": "搜索模式:",
     "gui_selftest_gallery": "单画廊模式:",
+    "gui_selftest_site": "里站模式:",
+    "gui_selftest_public": "表站模式(不应带 --site):",
     "gui_selftest_manifest": "从名单模式:",
     "gui_selftest_assert_tags": "标签搜索漏填标签却没有报错",
     "gui_selftest_ok": "OK：窗口构建 + 命令拼装全部通过。",
@@ -111,8 +119,8 @@ ZH = {
     "eh_epilog_note": "--limit / --pick 作用于「当次名单」:\n"
                       "  搜索模式 = 搜出来的画廊;  单画廊模式 = 画廊里的图片\n",
     "eh_help_url": "画廊 URL，例如 https://e-hentai.org/g/3817181/3b0370c5a1/",
-    "eh_help_tags": "标签搜索（与 URL 二选一）。语法: language:chinese$ / female:feline / "
-                    "-male:feline / ~feline，空格分隔多个",
+    "eh_help_tags": "标签搜索（与 URL 二选一）。语法: language:chinese$ / female:cat / "
+                    "-male:cat / ~cat，空格分隔多个",
     "eh_help_output": "保存目录。留空 = 读项目根 .pawout（无则当前目录）; "
                       "搜索模式作为根目录，单画廊作为该画廊目录",
     "eh_help_limit": "搜索模式: 取前 N 个画廊（默认 {n}，inf=全部）; "
@@ -182,6 +190,34 @@ ZH = {
                         "随机延迟 0~{delay}s",
     "eh_gallery_summary": "画廊: {title} (gid={gid})",
 
+    # ---------- 里站 / cookie（ExHentai） ----------
+    "eh_help_site": "目标站点: e-hentai=表站(默认,游客可看) | exhentai=里站(必须有 cookie)。"
+                    "给单画廊 URL 时留空会自动按 URL 域名判断",
+    "eh_help_cookie": "直接给 cookie 串，如 \"ipb_member_id=...; ipb_pass_hash=...; igneous=...\"",
+    "eh_help_cookie_file": "从文件读 cookie（浏览器插件导出的 cookies.txt 或每行一条 k=v）。"
+                           "留空 = 环境变量 EH_COOKIE > 当前目录/.ehcookie > 脚本目录/.ehcookie",
+    "eh_site_selected": "目标站点: {site}",
+    "eh_site_from_url": "URL 指向 {site}，已自动切到这个站",
+    "eh_cookie_loaded": "已载入 {n} 条 cookie（来源: {source}）",
+    "eh_cookie_none": "未提供 cookie（游客身份，只能看到表站公开内容）",
+    "eh_cookie_file_bad": "cookie 文件读不出来: {path}",
+    "eh_cookie_empty": "cookie 解析出来是空的，检查一下格式：要 `名字=值`，用 `;` 或换行分隔",
+    "eh_cookie_igneous": "  igneous = {value}（里站通行证）",
+    "eh_ex_need_cookie": "里站必须带 cookie 才能进 —— 现在一条都没有，先去拿。",
+    "eh_ex_hint": "怎么拿：浏览器登录表站 → 打开 exhentai.org（能进说明账号有权限）→ F12 → "
+                  "Application → Cookies → 把 ipb_member_id / ipb_pass_hash / igneous 三条"
+                  "存进项目根的 .ehcookie（每行一条 k=v），再用 --site exhentai",
+    "eh_ex_no_rights": "进不去里站：igneous = {value}，说明账号还没有里站权限"
+                       "（或 igneous 已过期）。合法的是一串 17 位字符。",
+    "eh_ex_blocked": "进不去里站：igneous = {value}… 看起来是合法值，但首页仍然是空白 —— "
+                     "大概率是出口 IP 被拦（共享节点常见），或者 cookie 少了 ipb_member_id / ipb_pass_hash。",
+    "eh_ex_probe_failed": "里站探测请求失败（网络/代理层面）: {err}",
+    "eh_ex_blank_hint": "  说明：这个「空白页」是 HTTP 200 的，不是报错 —— 里站就是用空白页拒绝访问的。",
+    "eh_blank_page_warn": "  拿到的是空白页（HTTP 200）—— cookie 可能在运行中失效了，"
+                          "重新登录表站换一份 igneous 再跑。",
+    "eh_blank_page_warn_public": "  拿到的是空页面（HTTP 200）—— 表站不需要 cookie，"
+                                 "这更像是代理节点抽风，换个节点重试。",
+
     # ---------- 公共库（common.py） ----------
     # ⚠️ 这一段必须与 felinepaw/i18n.py 的同名段保持一致：两边的 common.py 是逐字节拷贝。
     "common_limit_invalid": "--limit 需要是正整数或 inf。",
@@ -225,14 +261,18 @@ EN = {
     "gui_delay_label": "Delay:",
     "gui_cooldown_label": "Cooldown:",
     "gui_proxy_label": "Proxy (--proxy):",
+    "gui_site_label": "Site:",
+    "gui_cookie_file_label": "Cookie file (--cookie-file):",
     "gui_dry_run": "List only (--dry-run)",
     "gui_force": "Re-download (--force)",
     "gui_no_preflight": "Skip preflight (--no-preflight)",
     "gui_hint": "Hint: leave proxy / output dir / limit blank to use the script defaults; "
-                "tag syntax such as language:chinese$ / female:feline / -male:feline "
+                "tag syntax such as language:chinese$ / female:cat / -male:cat "
                 "(space-separated); --limit applies to galleries in search mode and to "
                 "images in single-gallery mode; Pick, Pages per gallery and List only "
-                "are mainly for the search flow",
+                "are mainly for the search flow; for the private site, save cookies to "
+                ".ehcookie (one k=v per line) and set Site to exhentai - leaving the "
+                "cookie file blank reads it automatically",
     "gui_start": "▶ Start",
     "gui_stop": "■ Stop",
     "gui_status_idle": "Idle",
@@ -243,6 +283,8 @@ EN = {
     "gui_lang_switched": "Language switched to {lang}",
     "gui_dlg_output_dir": "Select output directory",
     "gui_dlg_manifest_file": "Select manifest file",
+    "gui_dlg_cookie_file": "Select cookie file",
+    "gui_filetype_cookie": "Cookie files (*.txt;*.ehcookie)",
     "gui_filetype_all": "All files",
     "gui_err_need_tags": "Tag search mode requires tags (--tags)",
     "gui_err_need_url": "Single gallery mode requires a gallery URL",
@@ -256,6 +298,8 @@ EN = {
     "gui_stop_requested": "Stop requested",
     "gui_selftest_search": "Search mode:",
     "gui_selftest_gallery": "Single gallery mode:",
+    "gui_selftest_site": "Private site mode:",
+    "gui_selftest_public": "Public site mode (no --site expected):",
     "gui_selftest_manifest": "Manifest mode:",
     "gui_selftest_assert_tags": "tag search did not raise when tags were empty",
     "gui_selftest_ok": "OK: window build + argument assembly all passed.",
@@ -284,7 +328,7 @@ EN = {
                       "in the gallery\n",
     "eh_help_url": "Gallery URL, e.g. https://e-hentai.org/g/3817181/3b0370c5a1/",
     "eh_help_tags": "Tag search (either this or URL). Syntax: language:chinese$ / "
-                    "female:feline / -male:feline / ~feline, space-separated",
+                    "female:cat / -male:cat / ~cat, space-separated",
     "eh_help_output": "Save directory. Blank = read .pawout in the project root "
                       "(else current dir); in search mode it is the root, in single "
                       "gallery mode it is that gallery's folder",
@@ -366,6 +410,37 @@ EN = {
     "eh_download_plan": "{n} images in total (download limit {limit}), {workers} "
                         "threads, random delay 0~{delay}s",
     "eh_gallery_summary": "Gallery: {title} (gid={gid})",
+
+    # ---------- ExHentai / cookies ----------
+    "eh_help_site": "Target site: e-hentai=public site (default, works as guest) | "
+                    "exhentai=private site (cookie required). With a gallery URL, blank means "
+                    "the site is inferred from the URL host",
+    "eh_help_cookie": "Raw cookie string, e.g. \"ipb_member_id=...; ipb_pass_hash=...; igneous=...\"",
+    "eh_help_cookie_file": "Read cookies from a file (browser-exported cookies.txt or one k=v per line). "
+                           "Blank = env EH_COOKIE > ./.ehcookie > <script dir>/.ehcookie",
+    "eh_site_selected": "Target site: {site}",
+    "eh_site_from_url": "URL points at {site}; switched to it automatically",
+    "eh_cookie_loaded": "Loaded {n} cookie entries (source: {source})",
+    "eh_cookie_none": "No cookies supplied (guest mode: public-site content only)",
+    "eh_cookie_file_bad": "Cannot read cookie file: {path}",
+    "eh_cookie_empty": "Parsed no cookies. Expected `name=value` pairs separated by ';' or newlines",
+    "eh_cookie_igneous": "  igneous = {value} (private-site pass)",
+    "eh_ex_need_cookie": "The private site requires cookies - none supplied. Get one first.",
+    "eh_ex_hint": "How: log in on the public site -> open exhentai.org (if it loads, the account has "
+                  "access) -> F12 -> Application -> Cookies -> save ipb_member_id / ipb_pass_hash / "
+                  "igneous into .ehcookie (one k=v per line), then run with --site exhentai",
+    "eh_ex_no_rights": "Cannot enter the private site: igneous = {value}, so the account has no "
+                       "private-site access (or the value expired). A valid one is 17 characters long.",
+    "eh_ex_blocked": "Cannot enter the private site: igneous = {value}... looks valid, but the front "
+                     "page is still blank - most likely the exit IP is blocked (common with shared "
+                     "nodes), or ipb_member_id / ipb_pass_hash are missing.",
+    "eh_ex_probe_failed": "Private-site probe failed (network/proxy level): {err}",
+    "eh_ex_blank_hint": "  Note: this blank page is HTTP 200, not an error - the private site denies "
+                        "access by returning a blank page.",
+    "eh_blank_page_warn": "  Got a blank page (HTTP 200) - cookies probably expired mid-run. "
+                          "Log in again, refresh igneous, and rerun.",
+    "eh_blank_page_warn_public": "  Got an empty page (HTTP 200) - the public site needs no "
+                                 "cookies, so this is more likely a flaky proxy node. Retry.",
 
     # ---------- 公共库 ----------
     # ⚠️ 这一段必须与 felinepaw/i18n.py 的同名段保持一致：两边的 common.py 是逐字节拷贝。

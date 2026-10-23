@@ -11,7 +11,7 @@ e-hentai 画廊下载器 v3
     python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
 
     # ② 标签搜索 + 只看名单（不下载）
-    python EH_scraper_v2.py --tags "language:chinese$ female:feline" --limit 30 --dry-run
+    python EH_scraper_v2.py --tags "language:chinese$ female:cat" --limit 30 --dry-run
 
     # ③ 挑着下：借的 30 个里只要第 2,3,4,7 个
     python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --pick 2-4,7
@@ -19,6 +19,10 @@ e-hentai 画廊下载器 v3
     # ④ 精确复现（先 dry-run 存名单，再从名单挑 —— 不受搜索结果变动影响）
     python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --dry-run --manifest pick.json
     python EH_scraper_v2.py --from-manifest pick.json --pick 2-4,7
+
+    # ⑤ 里站（ExHentai）—— 必须带 cookie，cookie 放 .ehcookie 里可以省略参数
+    python EH_scraper_v2.py --site exhentai --cookie-file .ehcookie --tags "..." --dry-run
+    python EH_scraper_v2.py "https://exhentai.org/g/1234567/abcdef1234/"   # 按 URL 域名自动切站
 
 --limit / --pick 作用于「当次名单」（这套设计的唯一规则）：
 
@@ -61,7 +65,15 @@ except Exception:
     pass
 
 # ---------- 配置 ----------
-SITE = "https://e-hentai.org"
+#: 表站 / 里站。两者是**同一套数据库**：gid、token、gdata API、图片 CDN 全都通用，
+#: 只有域名不同。里站多一道 cookie 门禁（见 check_access），所以"切站点"= 换 SITE。
+SITES = {
+    "e-hentai": "https://e-hentai.org",     # 表站，游客也能看
+    "exhentai": "https://exhentai.org",     # 里站，必须有合法 cookie
+}
+SITE = SITES["e-hentai"]     # 运行时由 main() 按 --site / URL 域名覆盖
+SITE_KEY = "e-hentai"
+
 API = "https://api.e-hentai.org/api.php"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -111,9 +123,9 @@ def search_url(query: str) -> str:
 
     e-hentai 的搜索语法（原样写进 --tags 即可，空格分隔多个标签）：
         language:chinese$      精确标签（$ = 完全匹配）
-        female:feline            普通标签
-        -male:feline             排除某标签
-        ~feline                  模糊匹配
+        female:cat             普通标签
+        -male:cat              排除某标签
+        ~cat                   模糊匹配
     这里用 quote_plus：空格 -> '+'，':' -> '%3A'，'$' -> '%24'（实测均有效）。
     """
     return "%s/?f_search=%s" % (SITE, quote_plus(str(query).strip()))
@@ -139,9 +151,9 @@ def query_dir_name(query: str) -> str:
 
     所以这里先剔掉语法符号，再把空白折成下划线（标签之间通常用空格分隔）：
 
-        'language:chinese$ female:feline'  ->  eh_language_chinese_female_feline
+        'language:chinese$ female:cat'  ->  eh_language_chinese_female_cat
 
-    注意 `-male:feline`（排除某标签）里的 `-` 保留：它是标签名的一部分，
+    注意 `-male:cat`（排除某标签）里的 `-` 保留：它是标签名的一部分，
     去掉反而会让目录名表达相反的意思。
     """
     s = re.sub(r"[~$]", "", str(query))
@@ -183,6 +195,218 @@ def resolve_proxy(arg):
             url = "http://127.0.0.1:%d" % port
             return url, i18n.t("eh_proxy_auto", url=url)
     return None, ""                           # 没探到，交给 common 的 auto 检测
+
+
+# ============================================================
+# 站点切换 + cookie（里站入口）
+# ============================================================
+
+#: 默认 cookie 文件名（放项目根；已 gitignore —— 这是凭证，绝不入库）
+COOKIE_FILE = ".ehcookie"
+#: 也支持环境变量，方便在启动器里塞
+COOKIE_ENV = "EH_COOKIE"
+#: igneous 合法时是一串 17 位字符；这两种值等于"没里站权限"
+IGNEOUS_BAD = ("", "mystery", "null")
+
+
+def norm_site(value) -> str:
+    """把 --site 的各种写法归一成 SITES 的 key。
+
+    允许 `ex` / `exh` / `exhentai` 这类缩写 —— 命令行里敲全名太啰嗦。
+    认不出来的一律当表站：宁可看到公开内容，也不要为拼写错误直接报错。
+    """
+    s = str(value or "").strip().lower()
+    if s.startswith("ex") or s.startswith("里"):
+        return "exhentai"
+    return "e-hentai"
+
+
+def url_site(url):
+    """从画廊 URL 的域名判断它属于哪个站；判断不出来返回 None。
+
+    用户从浏览器复制里站链接过来是最自然的操作，这种情况下不必再手动 --site。
+    """
+    host = (urlparse(str(url or "")).netloc or "").lower()
+    if "exhentai" in host:
+        return "exhentai"
+    if "e-hentai" in host:
+        return "e-hentai"
+    return None
+
+
+def parse_cookie_text(text: str) -> dict:
+    """把各种写法的 cookie 文本解析成 `{name: value}`。
+
+    浏览器里复制出来的通常是 ① 或 ②，插件导出的是 ③：
+
+        ① `document.cookie` 整串：`a=1; b=2; c=3`
+        ② 多行 `k=v`：每行一条（本项目 .ehcookie 用这种，方便手改）
+        ③ Netscape cookies.txt：7 列制表符分隔，第 0 列域名、第 5 列名、第 6 列值
+           （浏览器插件导出的格式，`#HttpOnly_` 开头的行也要认）
+
+    解析不出来返回 {}，由调用方决定"当游客"还是"报错退出"。
+    """
+    text = (text or "").strip()
+    if not text:
+        return {}
+
+    # ③ Netscape：出现制表符就按表格解析
+    if "\t" in text:
+        jar = {}
+        for line in text.splitlines():
+            line = line.rstrip("\r")
+            if line.startswith("#HttpOnly_"):
+                line = line[len("#HttpOnly_"):]
+            elif line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 7:
+                continue
+            domain, name, value = parts[0], parts[5], parts[6]
+            if ("e-hentai" in domain or "exhentai" in domain) and value.strip():
+                jar[name] = value.strip()
+        if jar:
+            return jar
+
+    # ①② 按 `;` 和换行切开
+    jar = {}
+    for chunk in re.split(r"[;\r\n]+", text):
+        chunk = chunk.strip()
+        if not chunk or "=" not in chunk:
+            continue                  # 注释 / 空行
+        if chunk.startswith("#"):
+            continue
+        name, _, value = chunk.partition("=")
+        name = name.strip()
+        if name and value.strip():
+            # 空值直接丢掉：模板里留空的 `igneous=` 不该被算成"已载入一条 cookie"，
+            # 否则会让人以为配置成功，实际上什么都没带上去。
+            jar[name] = value.strip()
+    return jar
+
+
+def _read_text_any(path):
+    """按 utf-8-sig → gbk 依次尝试读文本；读不出来返回 None。
+
+    Windows 上手工编辑的文件可能是 GBK（记事本另存），BOM 也很常见，
+    两种都兜一下，免得用户以为"文件坏了"。
+    """
+    for enc in ("utf-8-sig", "gbk"):
+        try:
+            return Path(path).read_text(encoding=enc)
+        except UnicodeDecodeError:
+            continue
+        except OSError:
+            return None
+    return None
+
+
+def _ehcookie_candidates():
+    """`.ehcookie` 可能在哪：先当前目录，再脚本目录。
+
+    当前目录优先是因为 GUI 起子进程时 cwd = 程序目录（打包后就是 exe 旁边），
+    而脚本目录在打包后指向 %TEMP%\\_MEIxxxx —— 用户不可能把文件放那儿。
+    """
+    seen, out = set(), []
+    for base in (Path.cwd(), Path(__file__).resolve().parent):
+        f = base / COOKIE_FILE
+        if str(f) not in seen:
+            seen.add(str(f))
+            out.append(f)
+    return out
+
+
+def load_cookie(args, log=print):
+    """按优先级取 cookie，返回 `(jar_dict, 来源说明)`。
+
+    优先级：`--cookie` > `--cookie-file` > 环境变量 EH_COOKIE > `.ehcookie`
+
+    为什么要最后兜底到文件：igneous 是上百字符的随机串，每次粘进命令行不现实，
+    放一个 gitignore 过的 `.ehcookie` 才能"设一次，之后每条命令都带着"。
+    """
+    raw = getattr(args, "cookie", None)
+    if raw and str(raw).strip():
+        return parse_cookie_text(str(raw)), "--cookie"
+
+    path = getattr(args, "cookie_file", None)
+    if path and str(path).strip():
+        text = _read_text_any(path)
+        if text is None:
+            log(i18n.t("eh_cookie_file_bad", path=path))
+            return {}, ""
+        return parse_cookie_text(text), str(path)
+
+    raw = os.environ.get(COOKIE_ENV, "")
+    if raw.strip():
+        return parse_cookie_text(raw), COOKIE_ENV
+
+    for f in _ehcookie_candidates():
+        if f.is_file():
+            text = _read_text_any(f)
+            if text:
+                return parse_cookie_text(text), str(f)
+    return {}, ""
+
+
+def apply_cookie(session: requests.Session, jar: dict) -> None:
+    """把 cookie 挂到两个域上。
+
+    为什么两个都要：SITE 可能是 exhentai.org，但 gdata API 在 api.e-hentai.org、
+    图片在 *.e-hentai.org。cookie 的域是精确匹配的 —— `.exhentai.org` 不会被发到
+    e-hentai.org，只挂一个域就会在别处退化成匿名请求。
+    """
+    for name, value in jar.items():
+        for domain in (".exhentai.org", ".e-hentai.org"):
+            session.cookies.set(name, value, domain=domain, path="/")
+
+
+def looks_blank(html: str) -> bool:
+    """判断这一页是不是里站的「白屏」。
+
+    ⚠️ 关键事实（2026-10-23 实测）：拒绝访问时返回的是 **HTTP 200 + 空 body**
+       （`len(r.text) == 0`），不是 403。只看状态码会当成成功，然后解析出 0 张图还不报错。
+
+    所以判据就是"几乎没有内容"，**不要**再叠加「没有 itg 表格」这类结构判断 ——
+    表站遇到无效标签时会返回一个 5KB 的首页（真实页面、0 结果），
+    用结构判断会把它误判成被拦截，反而指错方向。
+    """
+    return len((html or "").strip()) < 512
+
+
+def _blank_hint() -> str:
+    """空页面时说哪句话 —— **按站点分开**。
+
+    里站的白屏几乎一定是 cookie 问题；表站根本不需要 cookie，同样症状只能解释成
+    节点抽风。混用文案会把人带去查错方向。
+    """
+    return i18n.t("eh_blank_page_warn" if SITE_KEY == "exhentai"
+                  else "eh_blank_page_warn_public")
+
+
+def check_access(session, jar, log=print) -> bool:
+    """里站门禁：先探一次首页，把「白屏」翻译成人话。返回 False = 进不去。
+
+    表站不需要这一步（游客也能看），直接放行。只花一个请求，比让用户跑到
+    "0 张图" 再猜原因划算得多。
+    """
+    if SITE_KEY != "exhentai":
+        return True
+    try:
+        resp = session.get(SITE + "/", timeout=25)
+    except requests.RequestException as e:
+        log(i18n.t("eh_ex_probe_failed", err=e))
+        return False
+
+    if not looks_blank(resp.text):
+        return True
+
+    igneous = (jar.get("igneous") or "").strip()
+    if igneous.lower() in IGNEOUS_BAD:
+        log(i18n.t("eh_ex_no_rights", value=igneous or "-"))
+    else:
+        log(i18n.t("eh_ex_blocked", value=igneous[:6]))
+    log(i18n.t("eh_ex_blank_hint"))
+    return False
 
 
 # ============================================================
@@ -278,6 +502,11 @@ def collect_search(session: requests.Session, query: str, want: int,
         resp.raise_for_status()
         got, total, nxt = parse_search_page(resp.text)
 
+        if not got and looks_blank(resp.text):
+            # 一条都解析不出来 + 页面是空白 → 不是"标签没结果"，是 cookie 失效
+            log(_blank_hint())
+            break
+
         fresh = [it for it in got if it["gid"] not in seen]
         for it in fresh:
             seen.add(it["gid"])
@@ -346,6 +575,8 @@ def fetch_gallery_links(session: requests.Session, gid: str, token: str,
             found.append((href, fname))
 
         if not found:
+            if looks_blank(resp.text):
+                log(_blank_hint())
             break
         links.extend(found)
         log(i18n.t("eh_gallery_links_page", page=page + 1, n=len(found),
@@ -434,7 +665,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(i18n.t("eh_epilog_examples") + "\n"
                 '  %(prog)s "https://e-hentai.org/g/3817181/3b0370c5a1/"\n'
-                '  %(prog)s --tags "language:chinese$ female:feline" --limit 30 --dry-run\n'
+                '  %(prog)s --tags "language:chinese$ female:cat" --limit 30 --dry-run\n'
                 '  %(prog)s --tags "language:chinese$" --limit 30 --pick 2-4,7\n'
                 '  %(prog)s --from-manifest eh_manifest.json --pick 2-4,7\n'
                 "\n" + i18n.t("eh_epilog_note")))
@@ -458,6 +689,15 @@ def build_parser() -> argparse.ArgumentParser:
                    help=i18n.t("eh_help_manifest"))
     p.add_argument("--from-manifest", default=None, metavar="FILE",
                    help=i18n.t("eh_help_from_manifest"))
+
+    # ---- 站点 / 身份（里站入口）----
+    p.add_argument("--site", type=norm_site, default=None,
+                   metavar="{e-hentai,exhentai}",
+                   help=i18n.t("eh_help_site"))
+    p.add_argument("--cookie", default=None, metavar="STR",
+                   help=i18n.t("eh_help_cookie"))
+    p.add_argument("--cookie-file", default=None, metavar="FILE",
+                   help=i18n.t("eh_help_cookie_file"))
 
     p.add_argument("-w", "--workers", type=int, default=4,
                    help=i18n.t("eh_help_workers"))
@@ -595,6 +835,7 @@ def _download_jobs(session, jobs, out, total, args, pacing):
 
 
 def main(argv=None):
+    global SITE, SITE_KEY
     args = parse_args(argv)
 
     # ---------- 0. 参数检查：URL 与 --tags 二选一（--from-manifest 时两者都不需要）----------
@@ -604,6 +845,17 @@ def main(argv=None):
         print(i18n.t("eh_example_tags"))
         print(i18n.t("eh_example_manifest"))
         return 1
+
+    # ---------- 0.2 站点：显式 --site 优先，否则按 URL 域名推 ----------
+    if args.site:
+        SITE_KEY = args.site
+    elif args.url:
+        guessed = url_site(args.url)
+        if guessed and guessed != SITE_KEY:
+            SITE_KEY = guessed
+            print(i18n.t("eh_site_from_url", site=SITE_KEY))
+    SITE = SITES[SITE_KEY]
+    print(i18n.t("eh_site_selected", site=SITE))
 
     # ---------- 0.5 决定代理（留空时优先探本地 Clash 端口） ----------
     resolved_proxy, note = resolve_proxy(args.proxy)
@@ -619,9 +871,32 @@ def main(argv=None):
     else:
         print(i18n.t("eh_proxy_direct"))
 
+    # ---------- 0.6 cookie（里站的入场券）----------
+    jar, cookie_source = load_cookie(args)
+    if jar:
+        apply_cookie(session, jar)
+        print(i18n.t("eh_cookie_loaded", n=len(jar), source=cookie_source))
+        if jar.get("igneous"):
+            ig = jar["igneous"]
+            print(i18n.t("eh_cookie_igneous",
+                         value=(ig[:6] + "…") if len(ig) > 6 else ig))
+    elif SITE_KEY == "exhentai":
+        # 没 cookie 还硬跑里站，结果只会是一页 200 空白 —— 提前把原因说清
+        print(i18n.t("eh_ex_need_cookie"))
+        print(i18n.t("eh_ex_hint"))
+        return 1
+    else:
+        print(i18n.t("eh_cookie_none"))
+
     pacing = common.Pacing(delay=0.0, jitter=args.delay, cooldown=args.cooldown)
 
-    if not common.run_preflight(args, SITE, "e-hentai"):
+    # 预检只探**表站**：它检验的是代理链路是否通，不是里站权限。
+    # 用里站当探针会把"没权限"误报成"代理不通"，那是两件完全不同的事。
+    if not common.run_preflight(args, SITES["e-hentai"], "e-hentai"):
+        return 1
+
+    # ---------- 0.7 里站门禁（一个请求换一句人话）----------
+    if not check_access(session, jar):
         return 1
 
     # =========================================================

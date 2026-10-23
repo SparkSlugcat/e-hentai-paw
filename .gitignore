@@ -9,6 +9,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+_pyi_env/
 
 # ---- 编辑器 ----
 .idea/
@@ -18,7 +19,15 @@ PROJECT_STATUS.md
 
 # ---- 本机私有配置（绝不入库）----
 .pawout
+# 里站 cookie：这是账号凭证，等同于密码，任何情况下都不进仓库
+.ehcookie
 
 # ---- 本机专用启动器（钉死本机 conda 环境，别人的机器用不上）----
 启动-本机.bat
 启动GUI-本机.bat
+# 本机专用打包器：钉死 py39 + 复用 e621 那份 _pyi_env，不做探测
+打包-本机.bat
+
+# ---- PyInstaller 打包产物 ----
+# spec 本身要入库（别人照着能重现），只挡中间的构建目录
+# （build/ dist/ 已在上面挡掉；exe 走 GitHub Releases，不进历史）

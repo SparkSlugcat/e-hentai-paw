@@ -28,6 +28,20 @@ import i18n
 HERE = Path(__file__).resolve().parent
 SCRAPER = HERE / "EH_scraper_v2.py"
 
+# ---------------------------------------------------------------
+# 打包（PyInstaller）相关
+# ---------------------------------------------------------------
+# 源码态：__file__ 在项目目录，sys.executable 是 python.exe。
+# 打包后：__file__ 在 %TEMP%\_MEIxxxx（每次启动解压一次、退出即删），
+#         sys.executable 是 EHPaw.exe 自己 —— 磁盘上**没有** EH_scraper_v2.py，
+#         也没有 python.exe 可以拿来起子进程。
+# 所以 packaged 时改成「自己起自己」：EHPaw.exe --run-scraper <原来的参数>，
+# 第二个实例的 main() 看到这个标志就只跑抓取器、不开窗口。
+FROZEN = bool(getattr(sys, "frozen", False))
+FROZEN_FLAG = "--run-scraper"
+# 用户眼里的"程序在哪"：打包后是 exe 所在目录，而不是临时解压目录
+APP_DIR = Path(sys.executable).resolve().parent if FROZEN else HERE
+
 
 def mode_labels():
     """三个互斥的入口：标签搜索 / 单画廊 URL / 从名单挑（--from-manifest）。
@@ -40,11 +54,15 @@ def mode_labels():
 
 MODES = mode_labels()
 
+#: 站点是专有名词，中英都不翻译，所以直接用固定字面量 + index 定位。
+#: 表站在前（默认），里站在后。
+SITES = ("e-hentai", "exhentai")
+
 
 class EHGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
-        root.geometry("720x600")
+        root.geometry("720x640")
         self.queue = queue.Queue()
         self.proc = None
         self._mode_idx = 0                       # 当前模式下标（切语言靠它复原）
@@ -69,6 +87,9 @@ class EHGUI:
         self.pick_var = tk.StringVar()
         self.pages_var = tk.StringVar()
         self.manifest_out_var = tk.StringVar(value="eh_manifest.json")
+        #: 站点 / cookie：里站入口。cookie 留空 = 让脚本自己找 .ehcookie（推荐）
+        self.site_var = tk.StringVar(value=SITES[0])
+        self.cookie_file_var = tk.StringVar()
         self.workers_var = tk.StringVar(value="4")
         self.delay_var = tk.StringVar(value="1.0")
         self.cooldown_var = tk.StringVar(value="20")
@@ -121,6 +142,14 @@ class EHGUI:
         self.mode_cb.grid(row=0, column=1, padx=2, pady=6, sticky="w")
         self.mode_cb.current(self._mode_idx)
         self.mode_cb.bind("<<ComboboxSelected>>", lambda e: self._on_mode())
+
+        # row 0 右半：站点（表站 / 里站）。放在模式旁边，因为它和"这次要访问哪儿"同类
+        ttk.Label(bar, text=i18n.t("gui_site_label")).grid(
+            row=0, column=2, padx=(14, 2), pady=6, sticky="e")
+        self.site_cb = ttk.Combobox(bar, textvariable=self.site_var, values=list(SITES),
+                                    state="readonly", width=11)
+        self.site_cb.grid(row=0, column=3, padx=2, pady=6, sticky="w")
+        self.site_cb.current(self._site_index())
 
         # row 1：标签（搜索模式用）
         ttk.Label(bar, text=i18n.t("gui_tags_label")).grid(
@@ -188,9 +217,17 @@ class EHGUI:
         ttk.Entry(bar, textvariable=self.proxy_var, width=50).grid(
             row=8, column=1, columnspan=3, sticky="we", pady=6)
 
-        # row 9：三个勾选框
+        # row 9：cookie 文件（里站用；留空 = 脚本自己找 .ehcookie）
+        ttk.Label(bar, text=i18n.t("gui_cookie_file_label")).grid(
+            row=9, column=0, padx=(8, 2), pady=6, sticky="e")
+        ttk.Entry(bar, textvariable=self.cookie_file_var, width=42).grid(
+            row=9, column=1, columnspan=2, sticky="we", pady=6)
+        ttk.Button(bar, text=i18n.t("gui_browse"), command=self._pick_cookie_file).grid(
+            row=9, column=3, padx=4, pady=6)
+
+        # row 10：三个勾选框
         opts2 = ttk.Frame(bar)
-        opts2.grid(row=9, column=0, columnspan=4, sticky="w", padx=8, pady=2)
+        opts2.grid(row=10, column=0, columnspan=4, sticky="w", padx=8, pady=2)
         ttk.Checkbutton(opts2, text=i18n.t("gui_dry_run"),
                         variable=self.dry_var).pack(side="left")
         ttk.Checkbutton(opts2, text=i18n.t("gui_force"),
@@ -198,10 +235,10 @@ class EHGUI:
         ttk.Checkbutton(opts2, text=i18n.t("gui_no_preflight"),
                         variable=self.no_preflight_var).pack(side="left", padx=(10, 0))
 
-        # row 10：提示
+        # row 11：提示
         ttk.Label(bar, text=i18n.t("gui_hint"),
                   foreground="gray", wraplength=680, justify="left"
-                  ).grid(row=10, column=0, columnspan=4, padx=8, pady=(2, 6), sticky="w")
+                  ).grid(row=11, column=0, columnspan=4, padx=8, pady=(2, 6), sticky="w")
         bar.columnconfigure(1, weight=1)
 
         # 控制行
@@ -262,6 +299,15 @@ class EHGUI:
             self._mode_idx = idx
         return self._mode_idx
 
+    def _site_index(self):
+        """当前站点的 index：0=表站 1=里站。
+
+        站点名是专有名词，中英一样，但同样用 index 判断 —— 以后要加第三个站
+        （比如里站的某个镜像）时，不用回来改判断逻辑。
+        """
+        v = (self.site_var.get() or "").strip().lower()
+        return 1 if v.startswith("ex") else 0
+
     def _select_mode(self, idx):
         """按 index 选模式（自检用；不依赖当前语言下的文案）。"""
         self._mode_idx = idx
@@ -297,6 +343,14 @@ class EHGUI:
         if f:
             self.from_manifest_var.set(f)
 
+    def _pick_cookie_file(self):
+        f = filedialog.askopenfilename(
+            title=i18n.t("gui_dlg_cookie_file"),
+            filetypes=[(i18n.t("gui_filetype_cookie"), "*.txt *.ehcookie"),
+                       (i18n.t("gui_filetype_all"), "*.*")])
+        if f:
+            self.cookie_file_var.set(f)
+
     # ------------------------------------------------------------
     # 命令拼装
     # ------------------------------------------------------------
@@ -322,6 +376,11 @@ class EHGUI:
             argv += ["--from-manifest", mf]
 
         # 通用参数
+        # --site 只在选了里站时才传：表站是默认值，传了反而会盖掉「按 URL 域名自动切站」
+        if self._site_index() == 1:
+            argv += ["--site", SITES[1]]
+        if self.cookie_file_var.get().strip():
+            argv += ["--cookie-file", self.cookie_file_var.get().strip()]
         if self.out_var.get().strip():
             argv += ["--output", self.out_var.get().strip()]
         if self.limit_var.get().strip():
@@ -374,7 +433,7 @@ class EHGUI:
         if self.proc is not None and self.proc.poll() is None:
             messagebox.showinfo(i18n.t("gui_msg_running_title"), i18n.t("gui_msg_running"))
             return
-        if not SCRAPER.exists():
+        if not FROZEN and not SCRAPER.exists():
             messagebox.showerror(i18n.t("gui_err_title"),
                                  i18n.t("gui_err_scraper_missing", name=SCRAPER.name))
             return
@@ -384,14 +443,25 @@ class EHGUI:
             messagebox.showwarning(i18n.t("gui_err_args_title"), str(e))
             return
 
-        cmd = [sys.executable, str(SCRAPER)] + args
+        # 源码态：python.exe EH_scraper_v2.py <args>
+        # 打包态：EHPaw.exe --run-scraper <args>（自调用分派，见 main()）
+        if FROZEN:
+            cmd = [sys.executable, FROZEN_FLAG] + args
+        else:
+            cmd = [sys.executable, str(SCRAPER)] + args
         self._log(">>> " + " ".join(cmd))
         # 子进程靠 PAW_LANG 决定日志语言；必须复制 os.environ，否则丢 PATH
         env = os.environ.copy()
         env[i18n.LANG_ENV] = i18n.get_lang()
+        # 打包后 common.local_out_root() 读不到项目根的 .pawout（它的 __file__ 在临时解压目录），
+        # 会退化到 Path(".") —— 那是 _MEIPASS，图片解完随程序退出一起消失。
+        # 所以这里按「exe 旁边的 .pawout」→「exe 旁边的 downloads\」的顺序兜底，
+        # 走 local_out_root() 的第一优先级环境变量，不用改 common.py。
+        if FROZEN and not env.get("PAW_OUT_DIR") and not self.out_var.get().strip():
+            env["PAW_OUT_DIR"] = str(_packaged_out_root())
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      text=True, encoding="utf-8", errors="replace", bufsize=1,
-                                     cwd=str(HERE), env=env)
+                                     cwd=str(APP_DIR), env=env)
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
         self._set_status("gui_status_running")
@@ -420,13 +490,23 @@ class EHGUI:
 def selftest():
     """无窗口自检：验证 tkinter 可用、组件能构建、命令拼装正确（不联网、不起子进程）。"""
     print("=== EH_gui selftest ===")
+    print("frozen=%s | python=%s | script_dir=%s" % (FROZEN, sys.version.split()[0], APP_DIR))
+    if FROZEN:
+        print("_MEIPASS=%s" % getattr(sys, "_MEIPASS", None))
+        # 关键验证：抓取器作为一个模块真的被打进 exe 了吗（自调用分支靠它）
+        try:
+            _m = __import__("EH_scraper_v2")
+            print("scraper_module=%s | main=%s"
+                  % (getattr(_m, "__file__", "?"), callable(getattr(_m, "main", None))))
+        except Exception as exc:
+            print("scraper_module 导入失败: %r" % (exc,))
     root = tk.Tk()
     root.withdraw()
     gui = EHGUI(root)
 
     # 1) 标签搜索
     gui._select_mode(0)
-    gui.tags_var.set("language:chinese$ female:feline")
+    gui.tags_var.set("language:chinese$ female:cat")
     gui.limit_var.set("10")
     gui.dry_var.set(True)
     cmd = gui._build_args()
@@ -441,6 +521,19 @@ def selftest():
     cmd2 = gui._build_args()
     print(i18n.t("gui_selftest_gallery"), cmd2)
     assert "https://e-hentai.org/g/3817181/3b0370c5a1/" in cmd2 and "--pick" in cmd2
+
+    # 2.5 里站：必须带上 --site exhentai，表站则**不能**带（否则会盖掉 URL 自动切站）
+    gui.site_var.set(SITES[1])
+    gui.cookie_file_var.set(".ehcookie")
+    cmd2b = gui._build_args()
+    print(i18n.t("gui_selftest_site"), cmd2b)
+    assert "--site" in cmd2b and "exhentai" in cmd2b and "--cookie-file" in cmd2b
+    gui.site_var.set(SITES[0])
+    gui.cookie_file_var.set("")
+    cmd2c = gui._build_args()
+    print(i18n.t("gui_selftest_public"), cmd2c)
+    assert "--site" not in cmd2c and "--cookie-file" not in cmd2c
+
 
     # 3) 从名单挑
     gui._select_mode(2)
@@ -463,6 +556,26 @@ def selftest():
     return 0
 
 
+def _packaged_out_root():
+    """打包后「默认下载到哪」：exe 旁边的 `.pawout`（有就用）> exe 旁边的 `downloads\\`。
+
+    为什么不能靠 `common.local_out_root()` 自己找：它用 `common.__file__` 定位项目根的
+    `.pawout`，而打包后那指向 `%TEMP%\\_MEIxxxx` —— 用户放 `.pawout` 只可能放在 exe 旁边。
+
+    **这就是「日常版 / 发布版」的实际落点**：同一个 exe，旁边放一行路径的 `.pawout`
+    就是自己的固定下载目录；不放就是干净的 `downloads\\`。不用打两个二进制。
+    """
+    cfg = APP_DIR / ".pawout"
+    try:
+        for line in cfg.read_text(encoding="utf-8-sig").splitlines():
+            s = line.strip()
+            if s and not s.startswith("#"):
+                return Path(s).expanduser()
+    except OSError:
+        pass
+    return APP_DIR / "downloads"
+
+
 def _apply_icon(root):
     ico = HERE / "assets" / "icon.ico"
     if ico.exists():
@@ -472,7 +585,30 @@ def _apply_icon(root):
             pass
 
 
+def _run_scraper(argv):
+    """打包后的「抓取器分支」：`EHPaw.exe --run-scraper <args>`。
+
+    这个进程是被 GUI 起来的后台子进程，不开窗口，只把 EH_scraper_v2 当模块
+    跑一遍。stdout 已被父进程接成管道，print 的内容会流回 GUI 的日志框。
+    """
+    # windowed exe 在既无控制台、又无管道时 sys.stdout 会是 None，print() 直接
+    # AttributeError。正常经 Popen(stdout=PIPE) 起的进程句柄有效、走不到这里；
+    # 这个兜底只是保证「宁可没日志，也不崩」。
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = sys.stdout
+    import EH_scraper_v2
+    try:
+        return EH_scraper_v2.main(argv)
+    except SystemExit as exc:            # argparse 的 --help / 参数错误走这里
+        return exc.code if isinstance(exc.code, int) else 0
+
+
 def main():
+    # 必须在 --selftest 之前：这是「同一个 exe 的第二个实例」的入口
+    if sys.argv[1:2] == [FROZEN_FLAG]:
+        return _run_scraper(sys.argv[2:])
     if "--selftest" in sys.argv:
         return selftest()
     root = tk.Tk()

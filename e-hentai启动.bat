@@ -110,9 +110,9 @@ echo   标签搜索 —— 只拉名单，不下载
 echo ------------------------------------------------------------
 echo    标签怎么写（空格分隔多个）：
 echo      language:chinese$            只要中文（$ = 精确匹配）
-echo      language:chinese$ female:feline
-echo      language:chinese$ -male:feline  排除 male:feline 这个标签
-echo      ~feline                        模糊匹配
+echo      language:chinese$ female:cat
+echo      language:chinese$ -male:cat  排除 male:cat 这个标签
+echo      ~cat                        模糊匹配
 echo ============================================================
 echo.
 set "tags="
