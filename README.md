@@ -1,5 +1,7 @@
 # e-hentai-paw
 
+![e-hentai-paw — e-hentai gallery downloader](assets/social-preview.png)
+
 e-hentai 画廊下载器 —— 支持**标签搜索**、**先看名单再挑着下**，提供**命令行（CLI）**和**图形界面（GUI）**两种入口。
 
 ---
@@ -66,96 +68,19 @@ python EH_scraper_v2.py --proxy http://127.0.0.1:你的端口
 python EH_scraper_v2.py --proxy off
 ```
 
-## 🆘 启动失败 / 没装好 Python？
+## 🆘 出问题了？
 
-如果你**双击 `启动.bat` / `启动GUI.bat` 看到一堆中文报错**，最常见的就是 Python 环境没配好。两步走。
+这一节故意留短。完整的排查手册在 **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)** ——
+启动失败、依赖缺失、`PYTHON_EXE` 配置、代理报错、里站空白页、限速，以及怎么报一个有用的 bug。
 
-### Step 1：看报错最关键的一行
-
-| 报错样例 | 含义 | 修法 |
-|---|---|---|
-| `'python' 不是内部或外部命令` | 系统找不到 `python.exe` | 走 §Step 2，配 `PYTHON_EXE` |
-| `ModuleNotFoundError: No module named 'requests'` | Python 找到了，但依赖没装 | `pip install requests lxml` |
-| `ModuleNotFoundError: No module named 'lxml'` | lxml 没装 | `pip install lxml` |
-| `DLL load failed while importing _tkinter` | conda 环境缺 tkinter | `conda install -n 你的环境 tk` |
-| 命令行窗口一闪就没了 | self-check 失败后静默退出 | 在 cmd 里手动敲 `启动.bat`，错误会留在窗口里（pause） |
-
-### 如果是 `No module named ...`：依赖没装
-
-完整报错一般长这样，**只看最后一行**就够：
-
-```text
-Traceback (most recent call last):
-  File "D:\你的路径\e-hentai-paw\EH_scraper_v2.py", line 52, in <module>
-    from lxml import etree
-ModuleNotFoundError: No module named 'lxml'
-```
-
-本工具只需要两个库，一条命令装齐：
-
-```bat
-python -m pip install requests lxml
-```
-
-| 容易踩的坑 | 现象 | 怎么办 |
-|---|---|---|
-| 用 `pip install` 而不是 `python -m pip install` | 装完再跑，还是同一个 `No module named` | 电脑上有多个 Python 时，`pip` 可能装到别的上面。**一律用 `python -m pip`** |
-| 装到了另一个 Python 上 | `python -c "import sys; print(sys.executable)"` 打印的路径，跟报错里 `File "...\EH_scraper_v2.py"` 不是同一个环境 | 用那个环境自己的解释器执行 `-m pip install` |
-| 下载卡住、最后报 `ReadTimeoutError` | pip 一直转圈然后超时 | 换国内镜像：`python -m pip install requests lxml -i https://pypi.tuna.tsinghua.edu.cn/simple` |
-| `ImportError: DLL load failed while importing etree` | Python 找到了，但 lxml 的二进制跟它的版本/位数不匹配 | `python -m pip install --force-reinstall lxml`；还不行就 `conda install -n 你的环境 lxml` |
-| `'pip' 不是内部或外部命令` | cmd 里根本找不到 pip | 用 `python -m pip`，绕开 PATH |
-
-**装完验证**（打印 `ok` 才算装对）：
-
-```bat
-python -c "import requests, lxml; print('ok')"
-```
-
-> 💡 **GUI 窗口能正常打开，但一点「▶ 开始」日志框里就冒出 traceback** —— 这就是缺依赖的典型样子
-> （GUI 启动时只需要 `tkinter`，真正干活的是它拉起来的子进程）。按上面把两个库装上即可。
->
-> 💡 **菜单式 `e-hentai启动.bat` 走的是命令行**，所以缺依赖会在 cmd 窗口里直接打 traceback，
-> 不会一闪而过（脚本带 `pause`）。
-
-### Step 2：让脚本知道你的 Python 在哪
-
-如果你**已经有了**一个 Python / conda 环境（环境名不叫 py39 也行，`myenv` / `ai` / `work` 任意都行），
-**不需要改名**——把它的 `python.exe` 完整路径告诉脚本就行。
-
-**永久**（推荐，写到注册表，全局生效）—— 打开任意 cmd，复制粘贴下面这一行（把路径换成你自己的）：
-
-```bat
-:: 1. 先找你的 python.exe 在哪
-where python
-:: 输出类似: C:\Users\你的用户名\miniconda3\envs\myenv\python.exe
-
-:: 2. 把上面那行复制，改造成下面这条，粘到 cmd 里执行
-setx PYTHON_EXE "C:\Users\你的用户名\miniconda3\envs\myenv\python.exe"
-```
-
-`setx` 写注册表，**执行后必须重新打开一个 cmd 才生效**。然后再双击 `启动.bat` 即可。
-
-**临时**（仅当前 cmd）：
-
-```bat
-set PYTHON_EXE=C:\Users\你的用户名\miniconda3\envs\myenv\python.exe
-启动.bat
-```
-
-### 实在找不到 Python 在哪？
-
-打开任意 cmd，敲：
-
-```bat
-where python
-```
-
-输出的**第一行**就是 `python.exe` 的完整路径。把它配到 `PYTHON_EXE` 即可。
-如果 `where python` 一行都没输出，说明你**根本没装 Python**——装一个就行：
-- 官方：https://www.python.org/downloads/（**勾** "Add Python to PATH"）
-- 或 Miniconda：https://docs.conda.io/en/latest/miniconda.html
-
----
+| 现象 | 去哪查 |
+|---|---|
+| `'python' 不是内部或外部命令`、`pythonw.exe not found` | TROUBLESHOOTING §3 —— 配 `PYTHON_EXE` |
+| `ModuleNotFoundError: No module named ...` | TROUBLESHOOTING §2 —— `python -m pip install requests lxml` |
+| `DLL load failed while importing _tkinter` | TROUBLESHOOTING §1 —— `conda install -n 你的环境 tk` |
+| 窗口一闪就没了 | TROUBLESHOOTING §1 —— 先在 cmd 里敲 `启动.bat` |
+| 里站空白页 / HTTP 200 | TROUBLESHOOTING §6 —— cookie 权限与过期 |
+| `ProxyError` / 全部超时 | TROUBLESHOOTING §5 —— 代理与网络 |
 
 ## 运行依赖
 
@@ -208,7 +133,7 @@ e-hentai启动.bat shell    直接进命令行模式
 python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
 
 # ② 标签搜索 + 只看名单（不下载）
-python EH_scraper_v2.py --tags "language:chinese$ female:feline" --limit 30 --dry-run
+python EH_scraper_v2.py --tags "language:chinese$ female:cat" --limit 30 --dry-run
 
 # ③ 搜完直接挑着下
 python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --pick 2-4,7
@@ -227,6 +152,45 @@ python check.py
 
 > 依赖同 A/B（Python 3.9+ 与 `requests`、`lxml`）；窗口本身只用到 Python 自带的 tkinter。
 > 双击后若没出现窗口，**在 cmd 里手动敲 `启动GUI.bat`** —— 错误会留在窗口里（pause）。
+
+---
+
+## 📦 打包成 exe（可选）
+
+不想碰命令行、也不想装 Python 的话，可以自己打一个单文件 exe：
+
+```bat
+:: 方式一：本机常用 —— 钉死 py39、复用现成的 PyInstaller，最快、不用联网
+双击  打包-本机.bat
+
+:: 方式二：换台机器打 / 给别人打 —— 自动扫环境，缺 PyInstaller 就装到 _pyi_env
+双击  build_exe.bat
+```
+
+产物都是 **`dist\EHPaw.exe`**（约 20 MB，单文件，目标机器不需要装 Python）。
+
+**打完必须自己验三条** —— 打包退出码 0 不代表能用：
+
+```bat
+dist\EHPaw.exe --selftest              :: 应打出 frozen=True 和 "OK：窗口构建 + 命令拼装全部通过"
+dist\EHPaw.exe --run-scraper --help    :: 应打出 usage，而不是弹出窗口
+双击 dist\EHPaw.exe                     :: 界面能开，能跑一次 dry-run
+```
+
+第二条专门验「自己起自己」。打包后 exe 里**没有** `python.exe`，也没有磁盘上的
+`EH_scraper_v2.py`；GUI 起子进程时改走 `EHPaw.exe --run-scraper <参数>`，标志没接上
+就会无限套娃地开窗口。
+
+**下载目录落在哪**：exe 旁边有 `.pawout`（一行路径）就用它，没有就落到 **exe 旁边的
+`downloads\`**。所以「日常版 / 发布版」不需要打两个 exe —— 同一个 exe，旁边放不放
+`.pawout` 就是两种身份。
+
+> ⚠️ `.pawout` 是本机私有文件（已在 `.gitignore`），别连 exe 一起发出去。
+>
+> ⚠️ conda 把 `tcl86t.dll` / `tk86t.dll` 放在 `<env>\Library\bin`，**不在** `<env>\DLLs`。
+> 两个 bat 都已经把它加进 `PATH`；如果你是手敲 `python -m PyInstaller`，这一步得自己做。
+> 漏了的话 PyInstaller 只在日志里丢一行 `WARNING: could not resolve 'tcl86t.dll'`，
+> 产物却是**双击完全没反应**（`DLL load failed while importing _tkinter`）。
 
 ---
 
@@ -249,15 +213,42 @@ python check.py
 | `--force` | 重下已存在的图（默认存在就跳过） |
 | `--proxy` | 留空 = 自动探本地 Clash 端口；`off` = 直连；或写 `http://127.0.0.1:7897` |
 | `--no-preflight` | 跳过发包前的代理预检 |
+| `--site` | `e-hentai`（表站，默认）或 `exhentai`（里站，必须带 cookie）。给 URL 时留空会按域名自动判断 |
+| `--cookie` | 直接给 cookie 串：`"ipb_member_id=…; ipb_pass_hash=…; igneous=…"` |
+| `--cookie-file` | 从文件读 cookie（`.ehcookie` / 浏览器插件导出的 `cookies.txt`）。留空 = 环境变量 `EH_COOKIE` → `.ehcookie` |
+
+### 里站（ExHentai）
+
+里站和表站是**同一套数据库**，gid / token / 图片全部通用，只差一个域名。区别是里站多一道门：
+访问时服务器只看 cookie 里的 `igneous`，合法才放行。
+
+```bash
+# 1. 把三条 cookie 存进项目根的 .ehcookie（模板见 .ehcookie.example）
+cp .ehcookie.example .ehcookie      # 然后填 ipb_member_id / ipb_pass_hash / igneous
+
+# 2. 用里站跑
+python EH_scraper_v2.py --site exhentai --tags "language:chinese$" --limit 30 --dry-run
+
+# 3. 或者直接粘里站 URL —— 站点会按域名自动切
+python EH_scraper_v2.py "https://exhentai.org/g/1234567/abcdef1234/"
+```
+
+⚠️ **两个必须知道的坑**：
+
+- 没权限时里站返回的是**空白页 + HTTP 200**，不是 403。本工具会先探一次首页把原因说清，
+  不要拿状态码判断成功。
+- cookie 会过期（`igneous` 有效期约一个月），过期后重新登录表站再取一份。
+
+`.ehcookie` 是账号凭证，等同于密码，**已 gitignore，不要提交也不要去外发**。
 
 ### 标签语法
 
 | 写法 | 含义 |
 |---|---|
 | `language:chinese$` | 精确匹配（`$` = 完全匹配这个标签，不是包含） |
-| `female:feline` | 普通标签 |
-| `-male:feline` | **排除**这个标签 |
-| `~feline` | 模糊匹配 |
+| `female:cat` | 普通标签 |
+| `-male:cat` | **排除**这个标签 |
+| `~cat` | 模糊匹配 |
 
 多个标签用空格分隔，整串用引号包住。
 
@@ -285,6 +276,9 @@ e-hentai-paw/
 ├── e-hentai启动.bat      双击启动器（菜单式 CLI，GBK 编码）
 ├── 启动GUI.bat           图形界面启动器（探测 Python + 自检 + 起 GUI）
 ├── README.md
+├── TROUBLESHOOTING.md    排错手册（启动、依赖、代理、里站、限速）
+├── assets/               图标与封面图
+├── .ehcookie.example     里站 cookie 模板（复制成 .ehcookie 再填）
 └── .gitignore
 ```
 
@@ -292,6 +286,7 @@ e-hentai-paw/
 
 - `eh_manifest.json` —— 名单文件，`--dry-run` 生成
 - `eh_<标签>/` —— 下载的图
+- `.ehcookie` —— 本机凭证，**已 gitignore**，别提交
 
 输出目录规则：
 
@@ -367,43 +362,20 @@ In one line: **the index shown in the dry-run output is the index you pass to `-
 python -m pip install requests lxml
 ```
 
-## 🆘 `No module named ...` — install the dependencies
+## 🆘 Something broke?
 
-The full traceback usually looks like this; **only the last line matters**:
+Kept short on purpose — the full guide is **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)**:
+startup failures, missing modules, `PYTHON_EXE`, proxy errors, the blank private-site page,
+rate limits, and how to file a bug.
 
-```text
-Traceback (most recent call last):
-  File "D:\path\to\e-hentai-paw\EH_scraper_v2.py", line 52, in <module>
-    from lxml import etree
-ModuleNotFoundError: No module named 'lxml'
-```
-
-This tool needs exactly two libraries:
-
-```bat
-python -m pip install requests lxml
-```
-
-| Pitfall | Symptom | Fix |
-|---|---|---|
-| Running `pip install` instead of `python -m pip install` | The same `No module named` after "installing" | With several Pythons installed, bare `pip` may install into a different one. **Always use `python -m pip`** |
-| Installed into the wrong interpreter | `python -c "import sys; print(sys.executable)"` prints a path outside the environment shown in the traceback | Run `-m pip install` with that environment's own interpreter |
-| Downloads hang, then `ReadTimeoutError` | pip spins forever and times out | Use a mirror: `python -m pip install requests lxml -i https://pypi.tuna.tsinghua.edu.cn/simple` |
-| `ImportError: DLL load failed while importing etree` | lxml's binary doesn't match your Python version / architecture | `python -m pip install --force-reinstall lxml`, or `conda install -n YOUR_ENV lxml` |
-| `'pip' is not recognized` | pip isn't on PATH | Use `python -m pip` |
-
-Verify (it has to print `ok`):
-
-```bat
-python -c "import requests, lxml; print('ok')"
-```
-
-> 💡 **The GUI opens fine, but a traceback shows up in the log the moment you hit "Start"** — that's the
-> classic missing-dependency symptom (the GUI itself only needs `tkinter`; the real download runs in the
-> child process it spawns).
->
-> 💡 The menu-driven `e-hentai启动.bat` runs in a real console, so missing deps print the traceback right
-> there instead of vanishing (the script has `pause` on failure).
+| Symptom | Where to look |
+|---|---|
+| `'python' is not recognized`, `pythonw.exe not found` | TROUBLESHOOTING §3 — set `PYTHON_EXE` |
+| `ModuleNotFoundError: No module named ...` | TROUBLESHOOTING §2 — `python -m pip install requests lxml` |
+| `DLL load failed while importing _tkinter` | TROUBLESHOOTING §1 — `conda install -n YOUR_ENV tk` |
+| Window flashes and disappears | TROUBLESHOOTING §1 — run `启动.bat` from a cmd window |
+| Blank page on the private site | TROUBLESHOOTING §6 — cookie permission and expiry |
+| `ProxyError` / everything times out | TROUBLESHOOTING §5 — proxy and network |
 
 ## Three ways to run
 
@@ -442,7 +414,7 @@ e-hentai启动.bat shell    go straight to command-line mode
 python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
 
 # (2) Tag search, listing only (no download)
-python EH_scraper_v2.py --tags "language:chinese$ female:feline" --limit 30 --dry-run
+python EH_scraper_v2.py --tags "language:chinese$ female:cat" --limit 30 --dry-run
 
 # (3) Search and download selected entries right away
 python EH_scraper_v2.py --tags "language:chinese$" --limit 30 --pick 2-4,7
@@ -463,6 +435,44 @@ single gallery / from manifest), fill in the fields and click "▶ 开始"; the 
 > tkinter, which ships with Python. If no window appears, double-click `启动GUI.bat` instead — it
 > prints the error to a console window first.
 
+## 📦 Building a standalone .exe (optional)
+
+If you want a double-clickable binary that needs no Python at all, build one yourself:
+
+```bat
+:: Local, everyday use — pinned to py39, reuses an existing PyInstaller (fast, offline)
+double-click  打包-本机.bat
+
+:: Portable — probes for a working environment and installs PyInstaller into _pyi_env if missing
+double-click  build_exe.bat
+```
+
+Both produce **`dist\EHPaw.exe`** (about 20 MB, single file, the target machine needs no Python).
+
+**Verify three things afterwards** — exit code 0 does not mean the binary works:
+
+```bat
+dist\EHPaw.exe --selftest              :: should print frozen=True and the OK line
+dist\EHPaw.exe --run-scraper --help    :: should print usage, NOT open a window
+double-click dist\EHPaw.exe             :: window opens; run one dry-run
+```
+
+The second check covers "the exe launching itself". A frozen exe contains **no** `python.exe`
+and no `EH_scraper_v2.py` on disk, so the GUI spawns `EHPaw.exe --run-scraper <args>` instead.
+Miss that flag and every start spawns another GUI window.
+
+**Where downloads land**: a `.pawout` file (one line, a path) next to the exe wins; otherwise
+files go to **`downloads\` next to the exe**. That is why there is no need to build two
+binaries — the same exe is either your personal setup (`.pawout` present) or a clean release.
+
+> ⚠️ `.pawout` is machine-private (it is in `.gitignore`) — never ship it alongside the exe.
+>
+> ⚠️ conda keeps `tcl86t.dll` / `tk86t.dll` in `<env>\Library\bin`, **not** in `<env>\DLLs`.
+> Both `.bat` files add it to `PATH` for you. If you invoke `python -m PyInstaller` by hand,
+> you must do it yourself: skipping this prints only a `WARNING: could not resolve 'tcl86t.dll'`
+> line in the log, yet the resulting exe **does nothing on double-click**
+> (`DLL load failed while importing _tkinter`).
+
 ## Options
 
 | Option | Description |
@@ -482,15 +492,44 @@ single gallery / from manifest), fill in the fields and click "▶ 开始"; the 
 | `--force` | Re-download images that already exist (default: skip) |
 | `--proxy` | Empty = auto-probe local Clash port; `off` = direct; or `http://127.0.0.1:7897` |
 | `--no-preflight` | Skip the proxy pre-check before requests |
+| `--site` | `e-hentai` (public, default) or `exhentai` (private, cookies required). With a URL, blank means the site is inferred from the host |
+| `--cookie` | Raw cookie string: `"ipb_member_id=…; ipb_pass_hash=…; igneous=…"` |
+| `--cookie-file` | Read cookies from a file (`.ehcookie`, or a browser-exported `cookies.txt`). Blank = env `EH_COOKIE` → `.ehcookie` |
+
+### Private site (ExHentai)
+
+The private site and the public site share **one database**: gids, tokens and images are identical,
+only the domain differs. The private site adds a gate — it only looks at the `igneous` cookie and
+lets you in when that value is valid.
+
+```bash
+# 1. Save the three cookies into .ehcookie in the project root (template: .ehcookie.example)
+cp .ehcookie.example .ehcookie      # then fill in ipb_member_id / ipb_pass_hash / igneous
+
+# 2. Run against the private site
+python EH_scraper_v2.py --site exhentai --tags "language:chinese$" --limit 30 --dry-run
+
+# 3. Or just paste a private-site URL - the site is inferred from the host
+python EH_scraper_v2.py "https://exhentai.org/g/1234567/abcdef1234/"
+```
+
+⚠️ **Two things worth knowing**:
+
+- Without access, the private site answers with a **blank page and HTTP 200** — not 403. This tool
+  probes the front page once and tells you why; do not treat the status code as success.
+- Cookies expire (`igneous` lasts about a month). Re-login on the public site to get a fresh one.
+
+`.ehcookie` is an account credential — as sensitive as a password. It is **gitignored**;
+never commit it or send it anywhere.
 
 ### Tag syntax
 
 | Form | Meaning |
 |---|---|
 | `language:chinese$` | Exact match (`$` = match the tag exactly, not as a substring) |
-| `female:feline` | Plain tag |
-| `-male:feline` | **Exclude** this tag |
-| `~feline` | Fuzzy match |
+| `female:cat` | Plain tag |
+| `-male:cat` | **Exclude** this tag |
+| `~cat` | Fuzzy match |
 
 Separate multiple tags with spaces and quote the whole string.
 
@@ -516,6 +555,8 @@ e-hentai-paw/
 ├── e-hentai启动.bat      double-click launcher (menu-driven CLI, GBK encoded)
 ├── 启动GUI.bat           GUI launcher (probes Python + self-check + launches the GUI)
 ├── README.md
+├── TROUBLESHOOTING.md    troubleshooting guide (startup, deps, proxy, private site, rate limits)
+├── assets/               icon and README banner
 └── .gitignore
 ```
 

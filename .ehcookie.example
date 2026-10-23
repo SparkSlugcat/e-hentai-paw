@@ -1,0 +1,17 @@
+# 复制成 .ehcookie 再填（.ehcookie 已 gitignore，不会被提交）
+# 每行一条 k=v。三条都必须有，缺一条里站就进不去。
+#
+# 从哪儿抄：浏览器登录表站 → 打开 https://exhentai.org/
+#   能正常显示 = 账号有里站权限
+#   F12 → Application/存储 → Cookies → https://exhentai.org
+#   把下面三个的值原样粘过来
+ipb_member_id=
+ipb_pass_hash=
+igneous=
+
+# 说明：
+#   ipb_member_id  你是谁
+#   ipb_pass_hash  登录凭证
+#   igneous        里站通行证。合法值是一串 17 位字符；
+#                  若是 mystery 或 null，说明账号还没有里站权限。
+#                  它会过期（社区说法约一个月），过期后重新登录表站再取一份。
