@@ -97,6 +97,7 @@ ZH = {
     "gui_selftest_manifest": "从名单模式:",
     "gui_selftest_assert_tags": "标签搜索漏填标签却没有报错",
     "gui_selftest_ok": "OK：窗口构建 + 命令拼装全部通过。",
+    "gui_selftest_lang": "语言切换:",
 
     # ---------- 抓取器（EH_scraper_v2.py） ----------
     "eh_err_parse_url": "无法从 URL 解析 gid/token: {url}",
@@ -118,7 +119,7 @@ ZH = {
     "eh_epilog_examples": "示例:",
     "eh_epilog_note": "--limit / --pick 作用于「当次名单」:\n"
                       "  搜索模式 = 搜出来的画廊;  单画廊模式 = 画廊里的图片\n",
-    "eh_help_url": "画廊 URL，例如 https://e-hentai.org/g/3817181/3b0370c5a1/",
+    "eh_help_url": "画廊 URL，例如 https://e-hentai.org/g/123456/abcdef1234/",
     "eh_help_tags": "标签搜索（与 URL 二选一）。语法: language:chinese$ / female:cat / "
                     "-male:cat / ~cat，空格分隔多个",
     "eh_help_output": "保存目录。留空 = 读项目根 .pawout（无则当前目录）; "
@@ -303,6 +304,7 @@ EN = {
     "gui_selftest_manifest": "Manifest mode:",
     "gui_selftest_assert_tags": "tag search did not raise when tags were empty",
     "gui_selftest_ok": "OK: window build + argument assembly all passed.",
+    "gui_selftest_lang": "Language switch:",
 
     # ---------- 抓取器 ----------
     "eh_err_parse_url": "Cannot parse gid/token from URL: {url}",
@@ -326,7 +328,7 @@ EN = {
     "eh_epilog_note": "--limit / --pick apply to the current list:\n"
                       "  search mode = galleries found;  single gallery mode = images "
                       "in the gallery\n",
-    "eh_help_url": "Gallery URL, e.g. https://e-hentai.org/g/3817181/3b0370c5a1/",
+    "eh_help_url": "Gallery URL, e.g. https://e-hentai.org/g/123456/abcdef1234/",
     "eh_help_tags": "Tag search (either this or URL). Syntax: language:chinese$ / "
                     "female:cat / -male:cat / ~cat, space-separated",
     "eh_help_output": "Save directory. Blank = read .pawout in the project root "

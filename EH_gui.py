@@ -515,12 +515,12 @@ def selftest():
 
     # 2) 单画廊
     gui._select_mode(1)
-    gui.url_var.set("https://e-hentai.org/g/3817181/3b0370c5a1/")
+    gui.url_var.set("https://e-hentai.org/g/123456/abcdef1234/")
     gui.dry_var.set(False)
     gui.pick_var.set("2-4,7")
     cmd2 = gui._build_args()
     print(i18n.t("gui_selftest_gallery"), cmd2)
-    assert "https://e-hentai.org/g/3817181/3b0370c5a1/" in cmd2 and "--pick" in cmd2
+    assert "https://e-hentai.org/g/123456/abcdef1234/" in cmd2 and "--pick" in cmd2
 
     # 2.5 里站：必须带上 --site exhentai，表站则**不能**带（否则会盖掉 URL 自动切站）
     gui.site_var.set(SITES[1])
@@ -550,6 +550,25 @@ def selftest():
         raise AssertionError(i18n.t("gui_selftest_assert_tags"))
     except ValueError:
         pass
+
+    # 5) 语言切换：顶部那个「语言:」标签必须跟着变
+    #    这条专门防一种回归 —— 标签如果只在启动时算一次、重建界面时不重算，
+    #    就会出现「切到中文了，标签还是 Language:」这种半中半英的界面。
+    _orig_lang = i18n.get_lang()
+    for _lang, _expect in (("zh", "语言:"), ("en", "Language:")):
+        i18n.set_lang(_lang, persist=False)
+        gui._build_ui()
+        root.update_idletasks()
+        _labels = [w.cget("text") for w in gui._lang_bar.winfo_children()
+                   if w.winfo_class() == "TLabel"]
+        _combo = [w.get() for w in gui._lang_bar.winfo_children()
+                  if w.winfo_class() == "TCombobox"]
+        print(i18n.t("gui_selftest_lang"), _lang, _labels, _combo)
+        assert _expect in _labels, "语言标签没跟着切: %s -> %r" % (_lang, _labels)
+        assert _combo and _combo[0] == i18n.LANG_NAMES[0 if _lang == "zh" else 1], \
+            "语言下拉框没跟着切: %s -> %r" % (_lang, _combo)
+    i18n.set_lang(_orig_lang, persist=False)
+    gui._build_ui()
 
     root.destroy()
     print(i18n.t("gui_selftest_ok"))

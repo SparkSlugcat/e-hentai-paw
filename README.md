@@ -142,7 +142,7 @@ e-hentai启动.bat shell    直接进命令行模式
 
 ```bash
 # ① 单画廊下载（粘 URL）
-python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
+python EH_scraper_v2.py "https://e-hentai.org/g/123456/abcdef1234/"
 
 # ② 标签搜索 + 只看名单（不下载）
 python EH_scraper_v2.py --tags "language:chinese$ female:cat" --limit 30 --dry-run
@@ -192,6 +192,27 @@ dist\EHPaw.exe --run-scraper --help    :: 应打出 usage，而不是弹出窗�
 第二条专门验「自己起自己」。打包后 exe 里**没有** `python.exe`，也没有磁盘上的
 `EH_scraper_v2.py`；GUI 起子进程时改走 `EHPaw.exe --run-scraper <参数>`，标志没接上
 就会无限套娃地开窗口。
+
+**打包不会带出你的本机路径。** 两个 bat 都先在**中性目录**里构建：
+
+先说实测结论：PyInstaller 6.22 打包时会把模块的源码路径**剥成裸文件名**（`EH_gui.py`），
+所以现在静态 `strings` 是搜不出源码目录的。中性目录这一步属于**兜底** —— 换 PyInstaller
+版本、或者以后 `datas` 里从项目目录取文件，构建路径就可能真的被带进产物。脚本的做法是：
+只把「要打包的 5 个 `.py` + `assets/icon.ico`」
+复制到 `<项目所在盘>:\_pawbuild\e-hentai-paw`（既没有用户名、也没有中文目录名），
+在那儿 build，再把 exe 拷回来、删掉临时目录。项目所在的盘写不了时退到 `%PUBLIC%\_pawbuild`。
+
+> ⚠️ **不要整个目录 copy**。`.pawout`、`.ehcookie`、`eh_manifest.json`、
+> `PROJECT_STATUS.md`（里面有本机绝对路径）都不该靠近构建目录 —— 清单就是上面那 6 个文件。
+
+打完会自动跑一次 `check_privacy.py`，判据分两档：
+
+| 命中类型 | 例子 | 判定 |
+|---|---|---|
+| **路径形态** | `\你的名字\`、`Users\你的名字`、整个项目目录 | 判**失败**，退出码 1 |
+| 裸用户名 | `你的名字` | 只**告警**：三个字母在 36 MB 压缩数据里几乎必然出现几次，是噪声 |
+
+单独跑也行：`python check_privacy.py dist\EHPaw.exe`（可选再给用户名和项目目录）。
 
 **下载目录落在哪**：exe 旁边有 `.pawout`（一行路径）就用它，没有就落到 **exe 旁边的
 `downloads\`**。所以「日常版 / 发布版」不需要打两个 exe —— 同一个 exe，旁边放不放
@@ -285,6 +306,7 @@ e-hentai-paw/
 ├── EH_gui.py             图形界面（tkinter 壳，套在主脚本外面）
 ├── common.py             共享库
 ├── check.py              网络预检，单独跑一次链路体检
+├── check_privacy.py      打包/发布前隐私自检：扫产物里有没有本机路径（两个 bat 会自动调）
 ├── e-hentai启动.bat      双击启动器（菜单式 CLI，GBK 编码）
 ├── 启动GUI.bat           图形界面启动器（探测 Python + 自检 + 起 GUI）
 ├── README.md
@@ -465,7 +487,7 @@ e-hentai启动.bat shell    go straight to command-line mode
 
 ```bash
 # (1) Single gallery (paste a URL)
-python EH_scraper_v2.py "https://e-hentai.org/g/3817181/3b0370c5a1/"
+python EH_scraper_v2.py "https://e-hentai.org/g/123456/abcdef1234/"
 
 # (2) Tag search, listing only (no download)
 python EH_scraper_v2.py --tags "language:chinese$ female:cat" --limit 30 --dry-run
@@ -514,6 +536,32 @@ double-click dist\EHPaw.exe             :: window opens; run one dry-run
 The second check covers "the exe launching itself". A frozen exe contains **no** `python.exe`
 and no `EH_scraper_v2.py` on disk, so the GUI spawns `EHPaw.exe --run-scraper <args>` instead.
 Miss that flag and every start spawns another GUI window.
+
+**The build does not leak your local paths.** Both `.bat` files build inside a **neutral
+directory**:
+
+Measured first: PyInstaller 6.22 strips each module's source path down to the bare filename
+(`EH_gui.py`), so a static `strings` pass will not reveal the build directory today. The neutral
+directory is therefore **belt and braces** — a different PyInstaller release, or a future `datas`
+entry read from the project folder, could put the path back in. The scripts copy only the 5 `.py`
+files + `assets/icon.ico` into
+`<drive>:\_pawbuild\e-hentai-paw` (no username, no non-ASCII directory names), build there,
+copy the exe back, then delete the temp tree. If that drive is not writable it falls back to
+`%PUBLIC%\_pawbuild`.
+
+> ⚠️ **Never `xcopy` the whole folder.** `.pawout`, `.ehcookie`, `eh_manifest.json` and
+> `PROJECT_STATUS.md` (which contains absolute paths) must stay out of the build directory —
+> the six files above are the complete list.
+
+After the build it runs `check_privacy.py` automatically, in two tiers:
+
+| Match | Example | Verdict |
+|---|---|---|
+| **Path shape** | `\yourname\`, `Users\yourname`, the whole project directory | **fails**, exit code 1 |
+| Bare username | `yourname` | **warning only** — a three-letter word shows up a few times in 36 MB of compressed data by pure chance |
+
+Runnable on its own: `python check_privacy.py dist\EHPaw.exe` (optionally pass username and
+project directory).
 
 **Where downloads land**: a `.pawout` file (one line, a path) next to the exe wins; otherwise
 files go to **`downloads\` next to the exe**. That is why there is no need to build two
